@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const ITEM_NAMES = require('./itemNames');
 
 class MatchFormatter {
   static DDRAGON_VERSION = '14.1.1';
@@ -73,10 +74,11 @@ class MatchFormatter {
 
     if (items.length === 0) return 'No items';
 
-    // Discord doesn't render images in field values well, so just show item IDs with links
+    // Show item names as clickable links
     return items.map(itemId => {
+      const itemName = ITEM_NAMES[itemId] || `Item ${itemId}`;
       const url = this.getItemIconUrl(itemId);
-      return `[Item ${itemId}](${url})`;
+      return `[${itemName}](${url})`;
     }).join(' • ');
   }
 
@@ -121,7 +123,7 @@ class MatchFormatter {
     return `${emoji} ${rank.tier} ${rank.rank} - ${rank.leaguePoints} LP`;
   }
 
-  static formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null) {
+  static formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null, eloChange = 0, currentElo = 1000) {
     const { participant, gameDuration, isRemake, gameMode, queueId } = playerStats;
 
     if (isRemake) {
@@ -173,6 +175,12 @@ class MatchFormatter {
       description += `\n${rankDisplay}`;
     }
 
+    // Add ELO info
+    const EloCalculator = require('./eloCalculator');
+    const eloRank = EloCalculator.getEloRank(currentElo);
+    const eloChangeDisplay = eloChange > 0 ? `+${eloChange}` : `${eloChange}`;
+    description += `\n${eloRank.name}: ${currentElo} ELO (${eloChangeDisplay})`;
+
     const embed = new EmbedBuilder()
       .setColor(color)
       .setAuthor({
@@ -184,7 +192,7 @@ class MatchFormatter {
       .setDescription(description)
       .addFields(
         {
-          name: '━━━━━━━━━━━━━━ 📊 PERFORMANCE SCORE ━━━━━━━━━━━━━━',
+          name: '📊 PERFORMANCE SCORE',
           value: `${scoreBar}\n**${score}/100 Points**`,
           inline: false
         },

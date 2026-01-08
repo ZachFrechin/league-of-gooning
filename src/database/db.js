@@ -42,9 +42,24 @@ class DatabaseManager {
         processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS player_elo (
+        guild_id TEXT NOT NULL,
+        puuid TEXT NOT NULL,
+        elo INTEGER DEFAULT 1000,
+        matches_played INTEGER DEFAULT 0,
+        wins INTEGER DEFAULT 0,
+        losses INTEGER DEFAULT 0,
+        total_kills INTEGER DEFAULT 0,
+        total_score INTEGER DEFAULT 0,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (guild_id, puuid)
+      );
+
       CREATE INDEX IF NOT EXISTS idx_tracked_accounts_guild ON tracked_accounts(guild_id);
       CREATE INDEX IF NOT EXISTS idx_tracked_accounts_puuid ON tracked_accounts(puuid);
       CREATE INDEX IF NOT EXISTS idx_processed_matches_puuid ON processed_matches(puuid);
+      CREATE INDEX IF NOT EXISTS idx_player_elo_guild ON player_elo(guild_id);
+      CREATE INDEX IF NOT EXISTS idx_player_elo_elo ON player_elo(guild_id, elo DESC);
     `);
 
     // Migration: Add summoner_id column if it doesn't exist
@@ -115,6 +130,55 @@ class DatabaseManager {
   markMatchProcessed(matchId, puuid) {
     const stmt = this.db.prepare('INSERT OR IGNORE INTO processed_matches (match_id, puuid) VALUES (?, ?)');
     return stmt.run(matchId, puuid);
+  }
+
+  // ELO System
+  getPlayerElo(guildId, puuid) {
+    const stmt = this.db.prepare('SELECT * FROM player_elo WHERE guild_id = ? AND puuid = ?');
+    return stmt.get(guildId, puuid);
+  }
+
+  updatePlayerElo(guildId, puuid, eloChange, won, kills, score) {
+    const current = this.getPlayerElo(guildId, puuid);
+
+    if (!current) {
+      // Initialize new player
+      const stmt = this.db.prepare(`
+        INSERT INTO player_elo (guild_id, puuid, elo, matches_played, wins, losses, total_kills, total_score, updated_at)
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?, datetime('now'))
+      `);
+      return stmt.run(guildId, puuid, 1000 + eloChange, won ? 1 : 0, won ? 0 : 1, kills, score);
+    } else {
+      // Update existing player
+      const stmt = this.db.prepare(`
+        UPDATE player_elo
+        SET elo = elo + ?,
+            matches_played = matches_played + 1,
+            wins = wins + ?,
+            losses = losses + ?,
+            total_kills = total_kills + ?,
+            total_score = total_score + ?,
+            updated_at = datetime('now')
+        WHERE guild_id = ? AND puuid = ?
+      `);
+      return stmt.run(eloChange, won ? 1 : 0, won ? 0 : 1, kills, score, guildId, puuid);
+    }
+  }
+
+  getLeaderboard(guildId, limit = 10) {
+    const stmt = this.db.prepare(`
+      SELECT
+        e.*,
+        t.game_name,
+        t.tag_line,
+        t.summoner_name
+      FROM player_elo e
+      JOIN tracked_accounts t ON e.puuid = t.puuid AND e.guild_id = t.guild_id
+      WHERE e.guild_id = ?
+      ORDER BY e.elo DESC
+      LIMIT ?
+    `);
+    return stmt.all(guildId, limit);
   }
 
   close() {

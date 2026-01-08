@@ -1,4 +1,5 @@
 const MatchFormatter = require('../utils/matchFormatter');
+const EloCalculator = require('../utils/eloCalculator');
 
 class MatchTracker {
   constructor(client, database, riotApi, checkInterval) {
@@ -104,12 +105,38 @@ class MatchTracker {
         rankedInfo = await this.riotApi.getRankedInfo(account.summoner_id);
       }
 
+      // Calculate performance score
+      const score = MatchFormatter.calculateScore(playerStats.participant, playerStats.gameDuration, playerStats.isRemake);
+
+      // Calculate ELO change
+      const eloChange = EloCalculator.calculateEloChange(
+        playerStats.participant,
+        score,
+        rankedInfo,
+        playerStats.queueId
+      );
+
+      // Update player ELO
+      this.database.updatePlayerElo(
+        account.guild_id,
+        account.puuid,
+        eloChange,
+        playerStats.participant.win,
+        playerStats.participant.kills,
+        score
+      );
+
+      // Get updated ELO for display
+      const playerElo = this.database.getPlayerElo(account.guild_id, account.puuid);
+
       const message = MatchFormatter.formatMatchResult(
         matchData,
         playerStats,
         account.game_name,
         account.tag_line,
-        rankedInfo
+        rankedInfo,
+        eloChange,
+        playerElo?.elo || 1000
       );
 
       await channel.send(message);
@@ -117,7 +144,7 @@ class MatchTracker {
       this.database.markMatchProcessed(latestMatchId, account.puuid);
       this.database.updateLastMatchId(account.puuid, latestMatchId);
 
-      console.log(`Match notification sent for ${account.game_name}#${account.tag_line}`);
+      console.log(`Match notification sent for ${account.game_name}#${account.tag_line} (ELO: ${eloChange > 0 ? '+' : ''}${eloChange})`);
     } catch (error) {
       console.error(`Error processing match for ${account.game_name}#${account.tag_line}:`, error.message);
     }
