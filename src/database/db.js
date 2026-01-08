@@ -20,6 +20,7 @@ class DatabaseManager {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         guild_id TEXT NOT NULL,
         summoner_name TEXT NOT NULL,
+        summoner_id TEXT,
         game_name TEXT NOT NULL,
         tag_line TEXT NOT NULL,
         puuid TEXT NOT NULL,
@@ -63,12 +64,12 @@ class DatabaseManager {
   }
 
   // Tracked Accounts
-  addTrackedAccount(guildId, summonerName, gameName, tagLine, puuid, region) {
+  addTrackedAccount(guildId, summonerName, gameName, tagLine, puuid, region, summonerId = null) {
     const stmt = this.db.prepare(`
-      INSERT INTO tracked_accounts (guild_id, summoner_name, game_name, tag_line, puuid, region)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO tracked_accounts (guild_id, summoner_name, summoner_id, game_name, tag_line, puuid, region)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    return stmt.run(guildId, summonerName, gameName, tagLine, puuid, region);
+    return stmt.run(guildId, summonerName, summonerId, gameName, tagLine, puuid, region);
   }
 
   removeTrackedAccount(guildId, gameName, tagLine) {

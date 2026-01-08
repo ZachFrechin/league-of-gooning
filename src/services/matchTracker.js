@@ -98,11 +98,18 @@ class MatchTracker {
         return;
       }
 
+      // Fetch rank info
+      let rankedInfo = null;
+      if (account.summoner_id) {
+        rankedInfo = await this.riotApi.getRankedInfo(account.summoner_id);
+      }
+
       const message = MatchFormatter.formatMatchResult(
         matchData,
         playerStats,
         account.game_name,
-        account.tag_line
+        account.tag_line,
+        rankedInfo
       );
 
       await channel.send(message);

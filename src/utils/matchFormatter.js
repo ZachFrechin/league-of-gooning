@@ -73,10 +73,11 @@ class MatchFormatter {
 
     if (items.length === 0) return 'No items';
 
+    // Discord doesn't render images in field values well, so just show item IDs with links
     return items.map(itemId => {
       const url = this.getItemIconUrl(itemId);
-      return `[](${url})`;
-    }).join(' ');
+      return `[Item ${itemId}](${url})`;
+    }).join(' • ');
   }
 
   static formatTeamComposition(participants, playerPuuid) {
@@ -91,7 +92,36 @@ class MatchFormatter {
       .join('\n');
   }
 
-  static formatMatchResult(matchData, playerStats, gameName, tagLine) {
+  static formatRank(rankedInfo, queueId) {
+    if (!rankedInfo || rankedInfo.length === 0) return null;
+
+    // For ranked solo/duo games, show RANKED_SOLO_5x5
+    // For ranked flex games, show RANKED_FLEX_SR
+    const queueType = queueId === 420 ? 'RANKED_SOLO_5x5' : queueId === 440 ? 'RANKED_FLEX_SR' : null;
+
+    if (!queueType) return null;
+
+    const rank = rankedInfo.find(r => r.queueType === queueType);
+    if (!rank) return null;
+
+    const tierEmojis = {
+      'IRON': '🔩',
+      'BRONZE': '🥉',
+      'SILVER': '🥈',
+      'GOLD': '🥇',
+      'PLATINUM': '💎',
+      'EMERALD': '💚',
+      'DIAMOND': '💠',
+      'MASTER': '👑',
+      'GRANDMASTER': '⭐',
+      'CHALLENGER': '🏆'
+    };
+
+    const emoji = tierEmojis[rank.tier] || '🎮';
+    return `${emoji} ${rank.tier} ${rank.rank} - ${rank.leaguePoints} LP`;
+  }
+
+  static formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null) {
     const { participant, gameDuration, isRemake, gameMode, queueId } = playerStats;
 
     if (isRemake) {
@@ -118,7 +148,7 @@ class MatchFormatter {
     const totalCS = participant.totalMinionsKilled + participant.neutralMinionsKilled;
     const csPerMin = (totalCS / (gameDuration / 60)).toFixed(1);
     const visionPerMin = (participant.visionScore / (gameDuration / 60)).toFixed(1);
-    const damagePerMin = Math.round(participant.damageDealtToChampions / (gameDuration / 60));
+    const damagePerMin = Math.round((participant.damageDealtToChampions || 0) / (gameDuration / 60));
 
     const killParticipation = participant.challenges?.killParticipation
       ? `${(participant.challenges.killParticipation * 100).toFixed(1)}%`
@@ -136,6 +166,12 @@ class MatchFormatter {
 
     const scoreBar = this.generateScoreBar(score);
     const championIconUrl = this.getChampionIconUrl(participant.championName);
+    const rankDisplay = this.formatRank(rankedInfo, queueId);
+
+    let description = `**${participant.championName}** • Level ${participant.champLevel} • ${duration}`;
+    if (rankDisplay) {
+      description += `\n${rankDisplay}`;
+    }
 
     const embed = new EmbedBuilder()
       .setColor(color)
@@ -145,7 +181,7 @@ class MatchFormatter {
       })
       .setTitle(`${result} - ${queueType}`)
       .setThumbnail(championIconUrl)
-      .setDescription(`**${participant.championName}** • Level ${participant.champLevel} • ${duration}`)
+      .setDescription(description)
       .addFields(
         {
           name: '━━━━━━━━━━━━━━ 📊 PERFORMANCE SCORE ━━━━━━━━━━━━━━',

@@ -40,7 +40,8 @@ module.exports = {
         gameName,
         tagLine,
         account.puuid,
-        process.env.RIOT_REGION
+        process.env.RIOT_REGION,
+        summoner.id
       );
 
       await interaction.editReply({

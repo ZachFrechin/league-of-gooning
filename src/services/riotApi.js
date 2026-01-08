@@ -59,6 +59,19 @@ class RiotAPI {
     }
   }
 
+  async getRankedInfo(summonerId) {
+    try {
+      const url = `https://${this.region}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`;
+      const response = await axios.get(url, {
+        headers: { 'X-Riot-Token': this.apiKey }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch ranked info:', error.message);
+      return [];
+    }
+  }
+
   getPlayerStats(matchData, puuid) {
     const participant = matchData.info.participants.find(p => p.puuid === puuid);
     if (!participant) {
