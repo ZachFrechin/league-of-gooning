@@ -174,17 +174,17 @@ class MatchFormatter {
         },
         {
           name: '💥 Damage',
-          value: `\`\`\`\n${participant.damageDealtToChampions.toLocaleString()}\n${damagePerMin}/min\n\`\`\``,
+          value: `\`\`\`\n${(participant.damageDealtToChampions || 0).toLocaleString()}\n${damagePerMin}/min\n\`\`\``,
           inline: true
         },
         {
           name: '👁️ Vision Score',
-          value: `\`\`\`\n${participant.visionScore}\n${visionPerMin}/min\n\`\`\``,
+          value: `\`\`\`\n${participant.visionScore || 0}\n${visionPerMin}/min\n\`\`\``,
           inline: true
         },
         {
           name: '💰 Gold',
-          value: `\`\`\`\n${participant.goldEarned.toLocaleString()}\n\`\`\``,
+          value: `\`\`\`\n${(participant.goldEarned || 0).toLocaleString()}\n\`\`\``,
           inline: true
         },
         {
