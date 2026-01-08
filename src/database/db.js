@@ -46,6 +46,17 @@ class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_tracked_accounts_puuid ON tracked_accounts(puuid);
       CREATE INDEX IF NOT EXISTS idx_processed_matches_puuid ON processed_matches(puuid);
     `);
+
+    // Migration: Add summoner_id column if it doesn't exist
+    try {
+      this.db.exec(`ALTER TABLE tracked_accounts ADD COLUMN summoner_id TEXT;`);
+      console.log('Migration: Added summoner_id column');
+    } catch (error) {
+      // Column already exists, ignore error
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Migration error:', error.message);
+      }
+    }
   }
 
   // Guild Settings
