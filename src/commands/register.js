@@ -32,9 +32,11 @@ module.exports = {
         });
       }
 
+      const summonerName = summoner?.name || gameName;
+
       database.addTrackedAccount(
         guildId,
-        summoner.name,
+        summonerName,
         gameName,
         tagLine,
         account.puuid,
@@ -42,7 +44,7 @@ module.exports = {
       );
 
       await interaction.editReply({
-        content: `✅ Successfully registered **${gameName}#${tagLine}** (Summoner: ${summoner.name})!\n\nThe bot will now track their matches and post results to the configured channel.`
+        content: `✅ Successfully registered **${gameName}#${tagLine}** (Summoner: ${summonerName})!\n\nThe bot will now track their matches and post results to the configured channel.`
       });
     } catch (error) {
       console.error('Error registering account:', error);
