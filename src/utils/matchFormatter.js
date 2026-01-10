@@ -10,46 +10,62 @@ class MatchFormatter {
     }
 
     let score = 0;
-    const { kills, deaths, assists, win, champLevel, totalMinionsKilled, neutralMinionsKilled, visionScore, damageDealtToChampions } = stats;
+    const { kills, deaths, assists, totalMinionsKilled, neutralMinionsKilled, visionScore, totalDamageDealtToChampions } = stats;
+    const gameMinutes = gameDuration / 60;
 
-    // Win/Loss (30 points)
-    score += win ? 30 : 0;
-
-    // KDA Score (25 points)
+    // === KDA SCORE (30 points max) ===
+    // Perfect KDA (0 deaths with kills/assists) = 30pts
+    // Scale based on KDA ratio
     const kda = deaths === 0 ? (kills + assists) : (kills + assists) / deaths;
-    if (kda >= 5) score += 25;
-    else if (kda >= 3) score += 20;
-    else if (kda >= 2) score += 15;
-    else if (kda >= 1) score += 10;
-    else score += 5;
+    if (deaths === 0 && (kills + assists) >= 10) score += 30;
+    else if (kda >= 6) score += 28;
+    else if (kda >= 5) score += 25;
+    else if (kda >= 4) score += 22;
+    else if (kda >= 3) score += 18;
+    else if (kda >= 2) score += 14;
+    else if (kda >= 1.5) score += 10;
+    else if (kda >= 1) score += 6;
+    else if (kda >= 0.5) score += 3;
+    else score += 0; // KDA < 0.5 = 0 points
 
-    // Kill Participation (15 points)
+    // === KILL PARTICIPATION (20 points max) ===
+    // 100% KP = 20pts, scales linearly
     const killParticipation = stats.challenges?.killParticipation || 0;
-    score += Math.min(15, Math.floor(killParticipation * 15));
+    score += Math.round(killParticipation * 20);
 
-    // CS (10 points)
+    // === CS PER MINUTE (15 points max) ===
     const totalCS = totalMinionsKilled + neutralMinionsKilled;
-    const csPerMin = totalCS / (gameDuration / 60);
-    if (csPerMin >= 8) score += 10;
+    const csPerMin = totalCS / gameMinutes;
+    if (csPerMin >= 10) score += 15;
+    else if (csPerMin >= 9) score += 13;
+    else if (csPerMin >= 8) score += 11;
+    else if (csPerMin >= 7) score += 9;
     else if (csPerMin >= 6) score += 7;
-    else if (csPerMin >= 4) score += 5;
-    else score += 2;
+    else if (csPerMin >= 5) score += 5;
+    else if (csPerMin >= 4) score += 3;
+    else if (csPerMin >= 3) score += 1;
+    else score += 0; // < 3 CS/min = 0 points
 
-    // Vision Score (10 points)
-    const visionPerMin = visionScore / (gameDuration / 60);
-    if (visionPerMin >= 2) score += 10;
-    else if (visionPerMin >= 1.5) score += 7;
-    else if (visionPerMin >= 1) score += 5;
-    else score += 2;
+    // === VISION SCORE PER MINUTE (15 points max) ===
+    const visionPerMin = visionScore / gameMinutes;
+    if (visionPerMin >= 2.5) score += 15;
+    else if (visionPerMin >= 2.0) score += 12;
+    else if (visionPerMin >= 1.5) score += 9;
+    else if (visionPerMin >= 1.0) score += 6;
+    else if (visionPerMin >= 0.5) score += 3;
+    else score += 0; // < 0.5 vision/min = 0 points
 
-    // Damage (10 points)
-    const damagePerMin = damageDealtToChampions / (gameDuration / 60);
-    if (damagePerMin >= 800) score += 10;
-    else if (damagePerMin >= 600) score += 7;
-    else if (damagePerMin >= 400) score += 5;
-    else score += 2;
+    // === DAMAGE PER MINUTE (20 points max) ===
+    const damagePerMin = (totalDamageDealtToChampions || 0) / gameMinutes;
+    if (damagePerMin >= 1200) score += 20;
+    else if (damagePerMin >= 1000) score += 17;
+    else if (damagePerMin >= 800) score += 14;
+    else if (damagePerMin >= 600) score += 11;
+    else if (damagePerMin >= 400) score += 8;
+    else if (damagePerMin >= 200) score += 4;
+    else score += 0; // < 200 dmg/min = 0 points
 
-    return Math.min(100, Math.round(score));
+    return Math.min(100, Math.max(0, Math.round(score)));
   }
 
   static getChampionIconUrl(championName) {
@@ -150,7 +166,7 @@ class MatchFormatter {
     const totalCS = participant.totalMinionsKilled + participant.neutralMinionsKilled;
     const csPerMin = (totalCS / (gameDuration / 60)).toFixed(1);
     const visionPerMin = (participant.visionScore / (gameDuration / 60)).toFixed(1);
-    const damagePerMin = Math.round((participant.damageDealtToChampions || 0) / (gameDuration / 60));
+    const damagePerMin = Math.round((participant.totalDamageDealtToChampions || 0) / (gameDuration / 60));
 
     const killParticipation = participant.challenges?.killParticipation
       ? `${(participant.challenges.killParticipation * 100).toFixed(1)}%`
@@ -218,7 +234,7 @@ class MatchFormatter {
         },
         {
           name: '💥 Damage',
-          value: `\`\`\`\n${(participant.damageDealtToChampions || 0).toLocaleString()}\n${damagePerMin}/min\n\`\`\``,
+          value: `\`\`\`\n${(participant.totalDamageDealtToChampions || 0).toLocaleString()}\n${damagePerMin}/min\n\`\`\``,
           inline: true
         },
         {
