@@ -390,7 +390,42 @@ class MatchFormatter {
           value: `\`\`\`\n${enemyComposition}\n\`\`\``,
           inline: true
         }
-      )
+      );
+
+    // Feature "Pute de la game" (Worst Player)
+    // Calculate score for ALL participants to find the lowest
+    const scoredParticipants = allParticipants.map(p => {
+      const pScore = this.calculateScore(p, gameDuration, isRemake, allParticipants);
+      return { ...p, score: pScore };
+    });
+
+    const winningTeam = scoredParticipants.filter(p => p.win);
+    const losingTeam = scoredParticipants.filter(p => !p.win);
+
+    const worstWinner = winningTeam.reduce((min, p) => p.score < min.score ? p : min, winningTeam[0]);
+    const worstLoser = losingTeam.reduce((min, p) => p.score < min.score ? p : min, losingTeam[0]);
+
+    if (worstWinner && worstLoser) {
+      embed.addFields(
+        {
+          name: '\u200b',
+          value: '**═══════════ CLOWNS OF THE GAME ═══════════**',
+          inline: false
+        },
+        {
+          name: '🤡 Pute de la game (Win Team)',
+          value: `**${worstWinner.championName}** (${worstWinner.summonerName})\nScore: **${worstWinner.score}/100**\n*A rendu la game difficile*`,
+          inline: true
+        },
+        {
+          name: '🤡 Pute de la game (Lose Team)',
+          value: `**${worstLoser.championName}** (${worstLoser.summonerName})\nScore: **${worstLoser.score}/100**\n*Responsable de la défaite*`,
+          inline: true
+        }
+      );
+    }
+
+    embed
       .setTimestamp(matchData.info.gameEndTimestamp)
       .setFooter({
         text: `Match ID: ${matchData.metadata.matchId}`,
