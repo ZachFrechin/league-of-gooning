@@ -10,23 +10,33 @@ class MatchFormatter {
     }
 
     let score = 0;
-    const { kills, deaths, assists, totalMinionsKilled, neutralMinionsKilled, visionScore, totalDamageDealtToChampions, goldEarned } = stats;
+    const { kills, deaths, assists, totalMinionsKilled, neutralMinionsKilled, visionScore, totalDamageDealtToChampions, goldEarned, teamPosition } = stats;
     const gameMinutes = gameDuration / 60;
+
+    // Determine if Support (UTILITY)
+    const isSupport = teamPosition === 'UTILITY';
 
     // Helper: Get Team Stats
     let teamDamage = 0;
     let teamGold = 0;
     let teamKills = 0;
 
+    let maxTeamDamage = 0;
+    let maxTeamGold = 0;
+
     if (allParticipants && allParticipants.length > 0) {
       const myTeamId = stats.teamId;
       const myTeam = allParticipants.filter(p => p.teamId === myTeamId);
+
       teamDamage = myTeam.reduce((sum, p) => sum + (p.totalDamageDealtToChampions || 0), 0);
       teamGold = myTeam.reduce((sum, p) => sum + (p.goldEarned || 0), 0);
       teamKills = myTeam.reduce((sum, p) => sum + p.kills, 0);
+
+      maxTeamDamage = Math.max(...myTeam.map(p => p.totalDamageDealtToChampions || 0));
+      maxTeamGold = Math.max(...myTeam.map(p => p.goldEarned || 0));
     }
 
-    // === 1. COMBAT SCORE (Max 35 pts) ===
+    // === 1. COMBAT SCORE (Max 40 pts) ===
     // KDA Component (Max 20 pts)
     const kda = deaths === 0 ? (kills + assists) : (kills + assists) / deaths;
     let kdaScore = 0;
@@ -36,20 +46,31 @@ class MatchFormatter {
     else if (kda >= 3) kdaScore = 14;
     else if (kda >= 2) kdaScore = 10;
     else if (kda >= 1) kdaScore = 5;
+
     score += kdaScore;
 
-    // KP Component (Max 15 pts)
-    // Use calculated KP with team kills if possible, otherwise fallback to stats.challenges
+    // KP Component (Max 20 pts)
+    // Target: 60% KP = Max Points
     let kp = 0;
     if (teamKills > 0) {
       kp = (kills + assists) / teamKills;
     } else {
       kp = stats.challenges?.killParticipation || 0;
     }
-    score += Math.min(15, Math.floor(kp * 15));
+
+    // Scale: 0.6 (60%) => 20 pts, so Factor is 33.33 -> let's say 35 to range it nicely
+    // If KP >= 0.6, give 20. Else scale.
+    let kpScore = 0;
+    if (kp >= 0.6) kpScore = 20;
+    else if (kp >= 0.5) kpScore = 16;
+    else if (kp >= 0.4) kpScore = 12;
+    else if (kp >= 0.3) kpScore = 8;
+    else if (kp >= 0.2) kpScore = 4;
+
+    score += kpScore;
 
 
-    // === 2. DAMAGE SCORE (Max 25 pts) ===
+    // === 2. DAMAGE SCORE (Max 30 pts) ===
     // Absolute: DPM
     const dpm = (totalDamageDealtToChampions || 0) / gameMinutes;
     let damageScoreAbs = 0;
@@ -63,19 +84,27 @@ class MatchFormatter {
     let damageScoreRel = 0;
     if (teamDamage > 0) {
       const dmgShare = (totalDamageDealtToChampions || 0) / teamDamage;
-      if (dmgShare >= 0.35) damageScoreRel = 25;      // >35% = Carry
+      if (dmgShare >= 0.35) damageScoreRel = 25;
       else if (dmgShare >= 0.30) damageScoreRel = 22;
-      else if (dmgShare >= 0.25) damageScoreRel = 18; // >25% = Solid
+      else if (dmgShare >= 0.25) damageScoreRel = 18;
       else if (dmgShare >= 0.20) damageScoreRel = 14;
       else if (dmgShare >= 0.15) damageScoreRel = 10;
       else if (dmgShare >= 0.10) damageScoreRel = 5;
     }
 
-    // Take the HIGHER score (rewards carries in short games OR long games)
-    score += Math.max(damageScoreAbs, damageScoreRel);
+    let finalDamageScore = Math.max(damageScoreAbs, damageScoreRel);
+
+    // BONUS: Top #1 Damage in Team (+5 pts)
+    // Only applies if score isn't already 0 (to avoid AFKs getting bonus)
+    if (finalDamageScore > 0 && totalDamageDealtToChampions >= maxTeamDamage) {
+      finalDamageScore += 5;
+    }
+
+    // Cap Damage Category at 30
+    score += Math.min(30, finalDamageScore);
 
 
-    // === 3. FARMING & ECONOMY SCORE (Max 20 pts) ===
+    // === 3. FARMING & ECONOMY SCORE (Max 25 pts) ===
     // Absolute: CS/min
     const totalCS = totalMinionsKilled + neutralMinionsKilled;
     const csPerMin = totalCS / gameMinutes;
@@ -91,28 +120,47 @@ class MatchFormatter {
     let goldScoreRel = 0;
     if (teamGold > 0) {
       const goldShare = (goldEarned || 0) / teamGold;
-      if (goldShare >= 0.24) goldScoreRel = 20;      // >24% income = Primary Carry
+      if (goldShare >= 0.24) goldScoreRel = 20;
       else if (goldShare >= 0.21) goldScoreRel = 17;
       else if (goldShare >= 0.19) goldScoreRel = 14;
       else if (goldShare >= 0.17) goldScoreRel = 11;
       else if (goldShare >= 0.15) goldScoreRel = 8;
     }
 
-    // Role adjustment: distinct bonus for Supports who don't CS?
-    // For now, take MAX to let Carries win via Gold% or CS. 
-    // Supports will struggle here unless we detect role, but they usually get high vision.
-    score += Math.max(csScoreAbs, goldScoreRel);
+    let finalFarmScore = Math.max(csScoreAbs, goldScoreRel);
+
+    // BONUS: Top #1 Gold in Team (+5 pts)
+    if (finalFarmScore > 0 && goldEarned >= maxTeamGold) {
+      finalFarmScore += 5;
+    }
+
+    // Cap Farm Category at 25
+    score += Math.min(25, finalFarmScore);
 
 
-    // === 4. VISION SCORE (Max 20 pts) ===
+    // === 4. VISION SCORE (Max: Supp 15 pts, Others 5 pts) ===
+    // If NOT Support, vision impact is low (as requested).
     const visionPerMin = visionScore / gameMinutes;
-    if (visionPerMin >= 2.0) score += 20;
-    else if (visionPerMin >= 1.5) score += 16;
-    else if (visionPerMin >= 1.0) score += 12;
-    else if (visionPerMin >= 0.75) score += 8;
-    else if (visionPerMin >= 0.5) score += 4;
+    let visionScoreCalc = 0;
 
-    // Cap at 100
+    if (isSupport) {
+      // Support Standards (High)
+      if (visionPerMin >= 2.5) visionScoreCalc = 15;
+      else if (visionPerMin >= 2.0) visionScoreCalc = 12;
+      else if (visionPerMin >= 1.5) visionScoreCalc = 9;
+      else if (visionPerMin >= 1.0) visionScoreCalc = 6;
+      else if (visionPerMin >= 0.5) visionScoreCalc = 3;
+    } else {
+      // Non-Support Standards (Very easy to max out, low impact)
+      // Max 5 points for vision
+      if (visionPerMin >= 0.75) visionScoreCalc = 5;
+      else if (visionPerMin >= 0.5) visionScoreCalc = 3;
+      else if (visionPerMin >= 0.25) visionScoreCalc = 1;
+    }
+
+    score += visionScoreCalc;
+
+    // Cap Total at 100
     return Math.min(100, Math.max(0, Math.round(score)));
   }
 
