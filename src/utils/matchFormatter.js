@@ -36,129 +36,146 @@ class MatchFormatter {
       maxTeamGold = Math.max(...myTeam.map(p => p.goldEarned || 0));
     }
 
-    // === 1. COMBAT SCORE (Max 40 pts) ===
-    // KDA Component (Max 20 pts)
-    const kda = deaths === 0 ? (kills + assists) : (kills + assists) / deaths;
-    let kdaScore = 0;
-    if (deaths === 0 && (kills + assists) >= 8) kdaScore = 20;
-    else if (kda >= 5) kdaScore = 20;
-    else if (kda >= 4) kdaScore = 17;
-    else if (kda >= 3) kdaScore = 14;
-    else if (kda >= 2) kdaScore = 10;
-    else if (kda >= 1) kdaScore = 5;
-
-    score += kdaScore;
-
-    // KP Component (Max 20 pts)
-    // Target: 60% KP = Max Points
-    let kp = 0;
-    if (teamKills > 0) {
-      kp = (kills + assists) / teamKills;
-    } else {
-      kp = stats.challenges?.killParticipation || 0;
-    }
-
-    // Scale: 0.6 (60%) => 20 pts, so Factor is 33.33 -> let's say 35 to range it nicely
-    // If KP >= 0.6, give 20. Else scale.
-    let kpScore = 0;
-    if (kp >= 0.6) kpScore = 20;
-    else if (kp >= 0.5) kpScore = 16;
-    else if (kp >= 0.4) kpScore = 12;
-    else if (kp >= 0.3) kpScore = 8;
-    else if (kp >= 0.2) kpScore = 4;
-
-    score += kpScore;
-
-
-    // === 2. DAMAGE SCORE (Max 30 pts) ===
-    // Absolute: DPM
-    const dpm = (totalDamageDealtToChampions || 0) / gameMinutes;
-    let damageScoreAbs = 0;
-    if (dpm >= 1000) damageScoreAbs = 25;
-    else if (dpm >= 800) damageScoreAbs = 20;
-    else if (dpm >= 600) damageScoreAbs = 15;
-    else if (dpm >= 400) damageScoreAbs = 10;
-    else if (dpm >= 200) damageScoreAbs = 5;
-
-    // Relative: % of Team Damage
-    let damageScoreRel = 0;
-    if (teamDamage > 0) {
-      const dmgShare = (totalDamageDealtToChampions || 0) / teamDamage;
-      if (dmgShare >= 0.35) damageScoreRel = 25;
-      else if (dmgShare >= 0.30) damageScoreRel = 22;
-      else if (dmgShare >= 0.25) damageScoreRel = 18;
-      else if (dmgShare >= 0.20) damageScoreRel = 14;
-      else if (dmgShare >= 0.15) damageScoreRel = 10;
-      else if (dmgShare >= 0.10) damageScoreRel = 5;
-    }
-
-    let finalDamageScore = Math.max(damageScoreAbs, damageScoreRel);
-
-    // BONUS: Top #1 Damage in Team (+5 pts)
-    // Only applies if score isn't already 0 (to avoid AFKs getting bonus)
-    if (finalDamageScore > 0 && totalDamageDealtToChampions >= maxTeamDamage) {
-      finalDamageScore += 5;
-    }
-
-    // Cap Damage Category at 30
-    score += Math.min(30, finalDamageScore);
-
-
-    // === 3. FARMING & ECONOMY SCORE (Max 25 pts) ===
-    // Absolute: CS/min
-    const totalCS = totalMinionsKilled + neutralMinionsKilled;
-    const csPerMin = totalCS / gameMinutes;
-    let csScoreAbs = 0;
-    if (csPerMin >= 9) csScoreAbs = 20;
-    else if (csPerMin >= 8) csScoreAbs = 17;
-    else if (csPerMin >= 7) csScoreAbs = 14;
-    else if (csPerMin >= 6) csScoreAbs = 11;
-    else if (csPerMin >= 5) csScoreAbs = 8;
-    else if (csPerMin >= 4) csScoreAbs = 5;
-
-    // Relative: Gold Share
-    let goldScoreRel = 0;
-    if (teamGold > 0) {
-      const goldShare = (goldEarned || 0) / teamGold;
-      if (goldShare >= 0.24) goldScoreRel = 20;
-      else if (goldShare >= 0.21) goldScoreRel = 17;
-      else if (goldShare >= 0.19) goldScoreRel = 14;
-      else if (goldShare >= 0.17) goldScoreRel = 11;
-      else if (goldShare >= 0.15) goldScoreRel = 8;
-    }
-
-    let finalFarmScore = Math.max(csScoreAbs, goldScoreRel);
-
-    // BONUS: Top #1 Gold in Team (+5 pts)
-    if (finalFarmScore > 0 && goldEarned >= maxTeamGold) {
-      finalFarmScore += 5;
-    }
-
-    // Cap Farm Category at 25
-    score += Math.min(25, finalFarmScore);
-
-
-    // === 4. VISION SCORE (Max: Supp 15 pts, Others 5 pts) ===
-    // If NOT Support, vision impact is low (as requested).
-    const visionPerMin = visionScore / gameMinutes;
-    let visionScoreCalc = 0;
-
     if (isSupport) {
-      // Support Standards (High)
-      if (visionPerMin >= 2.5) visionScoreCalc = 15;
-      else if (visionPerMin >= 2.0) visionScoreCalc = 12;
-      else if (visionPerMin >= 1.5) visionScoreCalc = 9;
-      else if (visionPerMin >= 1.0) visionScoreCalc = 6;
-      else if (visionPerMin >= 0.5) visionScoreCalc = 3;
-    } else {
-      // Non-Support Standards (Very easy to max out, low impact)
-      // Max 5 points for vision
-      if (visionPerMin >= 0.75) visionScoreCalc = 5;
-      else if (visionPerMin >= 0.5) visionScoreCalc = 3;
-      else if (visionPerMin >= 0.25) visionScoreCalc = 1;
-    }
+      // ==========================================
+      // SUPPORT SCORING (UTILITY)
+      // ==========================================
 
-    score += visionScoreCalc;
+      // 1. VISION (Max 40 pts) - Primary Stat
+      const visionPerMin = visionScore / gameMinutes;
+      let visionScoreCalc = 0;
+      if (visionPerMin >= 2.5) visionScoreCalc = 40;
+      else if (visionPerMin >= 2.0) visionScoreCalc = 35;
+      else if (visionPerMin >= 1.75) visionScoreCalc = 30;
+      else if (visionPerMin >= 1.5) visionScoreCalc = 25;
+      else if (visionPerMin >= 1.25) visionScoreCalc = 20;
+      else if (visionPerMin >= 1.0) visionScoreCalc = 15;
+      else if (visionPerMin >= 0.75) visionScoreCalc = 10;
+      else if (visionPerMin >= 0.5) visionScoreCalc = 5;
+      score += visionScoreCalc;
+
+      // 2. COMBAT (Max 50 pts)
+      // KP Component (30 pts max)
+      let kp = teamKills > 0 ? (kills + assists) / teamKills : (stats.challenges?.killParticipation || 0);
+      let kpScore = 0;
+      if (kp >= 0.60) kpScore = 30; // 60% KP = Max
+      else if (kp >= 0.50) kpScore = 25;
+      else if (kp >= 0.40) kpScore = 20;
+      else if (kp >= 0.30) kpScore = 15;
+      else if (kp >= 0.20) kpScore = 10;
+      score += kpScore;
+
+      // Survival/Assists (20 pts max)
+      // Ratio: (Assists + 1) / (Deaths + 1) to avoid div by 0 and reward low deaths
+      const survivalRatio = (assists + 1) / (deaths + 1);
+      let survivalScore = 0;
+      if (deaths === 0) survivalScore = 20; // Perfect survival
+      else if (survivalRatio >= 4.0) survivalScore = 20;
+      else if (survivalRatio >= 3.0) survivalScore = 15;
+      else if (survivalRatio >= 2.0) survivalScore = 10;
+      else if (survivalRatio >= 1.0) survivalScore = 5;
+      score += survivalScore;
+
+      // 3. UTILITY/ACTIVITY (Max 10 pts)
+      // Base poke/presence check
+      const dpm = (totalDamageDealtToChampions || 0) / gameMinutes;
+      if (dpm >= 200) score += 10;
+      else score += 5;
+
+    } else {
+      // ==========================================
+      // STANDARD SCORING (CARRY / TANK / ETC)
+      // ==========================================
+
+      // 1. COMBAT (Max 35 pts)
+      // KDA (20 pts)
+      const kda = deaths === 0 ? (kills + assists) : (kills + assists) / deaths;
+      let kdaScore = 0;
+      if (deaths === 0 && (kills + assists) >= 8) kdaScore = 20;
+      else if (kda >= 5) kdaScore = 20;
+      else if (kda >= 4) kdaScore = 17;
+      else if (kda >= 3) kdaScore = 14;
+      else if (kda >= 2) kdaScore = 10;
+      else if (kda >= 1) kdaScore = 5;
+      score += kdaScore;
+
+      // KP (15 pts)
+      let kp = teamKills > 0 ? (kills + assists) / teamKills : (stats.challenges?.killParticipation || 0);
+      let kpScore = 0;
+      if (kp >= 0.60) kpScore = 15;
+      else if (kp >= 0.50) kpScore = 12;
+      else if (kp >= 0.40) kpScore = 9;
+      else if (kp >= 0.30) kpScore = 6;
+      else if (kp >= 0.20) kpScore = 3;
+      score += kpScore;
+
+      // 2. DAMAGE (Max 30 pts)
+      // Absolute DPM
+      const dpm = (totalDamageDealtToChampions || 0) / gameMinutes;
+      let damageScoreAbs = 0;
+      if (dpm >= 1000) damageScoreAbs = 25; // Base cap 25
+      else if (dpm >= 800) damageScoreAbs = 20;
+      else if (dpm >= 600) damageScoreAbs = 15;
+      else if (dpm >= 400) damageScoreAbs = 10;
+      else if (dpm >= 200) damageScoreAbs = 5;
+
+      // Relative Dmg%
+      let damageScoreRel = 0;
+      if (teamDamage > 0) {
+        const dmgShare = (totalDamageDealtToChampions || 0) / teamDamage;
+        if (dmgShare >= 0.35) damageScoreRel = 25;
+        else if (dmgShare >= 0.30) damageScoreRel = 22;
+        else if (dmgShare >= 0.25) damageScoreRel = 18;
+        else if (dmgShare >= 0.20) damageScoreRel = 14;
+        else if (dmgShare >= 0.15) damageScoreRel = 10;
+      }
+
+      let finalDamageScore = Math.max(damageScoreAbs, damageScoreRel);
+      // Leader Bonus (+5)
+      if (finalDamageScore > 0 && totalDamageDealtToChampions >= maxTeamDamage) finalDamageScore += 5;
+      score += Math.min(30, finalDamageScore);
+
+      // 3. FARMING & GOLD (Max 30 pts) - STRICT CS REQUIREMENT
+      // Absolute CS/min - The only way to get perfect score
+      const totalCS = totalMinionsKilled + neutralMinionsKilled;
+      const csPerMin = totalCS / gameMinutes;
+      let csScoreAbs = 0;
+      if (csPerMin >= 10) csScoreAbs = 30; // Perfect 10/min -> 30 pts
+      else if (csPerMin >= 9) csScoreAbs = 25;
+      else if (csPerMin >= 8) csScoreAbs = 20;
+      else if (csPerMin >= 7) csScoreAbs = 15;
+      else if (csPerMin >= 6) csScoreAbs = 10;
+      else if (csPerMin >= 5) csScoreAbs = 5;
+
+      // Relative Gold Bonus (Safety net, but capped at 20)
+      let goldScoreRel = 0;
+      if (teamGold > 0) {
+        const goldShare = (goldEarned || 0) / teamGold;
+        if (goldShare >= 0.24) goldScoreRel = 20; // Cap at 20
+        else if (goldShare >= 0.21) goldScoreRel = 17;
+        else if (goldShare >= 0.19) goldScoreRel = 14;
+        else if (goldShare >= 0.17) goldScoreRel = 11;
+        else if (goldShare >= 0.15) goldScoreRel = 8;
+      }
+
+      let finalFarmScore = Math.max(csScoreAbs, goldScoreRel);
+      if (goldEarned >= maxTeamGold && finalFarmScore < 25) {
+        finalFarmScore += 5;
+      }
+
+      // STRICT RULE: If CS < 9.5, Cap Farm Score at 25.
+      if (csPerMin < 9.5) {
+        finalFarmScore = Math.min(25, finalFarmScore);
+      }
+
+      score += Math.min(30, finalFarmScore);
+
+      // 4. VISION (Max 5 pts)
+      const visionPerMin = visionScore / gameMinutes;
+      if (visionPerMin >= 0.75) score += 5;
+      else if (visionPerMin >= 0.5) score += 3;
+      else if (visionPerMin >= 0.25) score += 1;
+    }
 
     // Cap Total at 100
     return Math.min(100, Math.max(0, Math.round(score)));
