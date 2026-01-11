@@ -37,9 +37,11 @@ class DatabaseManager {
       );
 
       CREATE TABLE IF NOT EXISTS processed_matches (
-        match_id TEXT PRIMARY KEY,
+        match_id TEXT,
         puuid TEXT NOT NULL,
-        processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        guild_id TEXT NOT NULL,
+        processed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (match_id, puuid, guild_id)
       );
 
       CREATE TABLE IF NOT EXISTS player_elo (
@@ -57,7 +59,7 @@ class DatabaseManager {
 
       CREATE INDEX IF NOT EXISTS idx_tracked_accounts_guild ON tracked_accounts(guild_id);
       CREATE INDEX IF NOT EXISTS idx_tracked_accounts_puuid ON tracked_accounts(puuid);
-      CREATE INDEX IF NOT EXISTS idx_processed_matches_puuid ON processed_matches(puuid);
+      CREATE INDEX IF NOT EXISTS idx_processed_matches_lookup ON processed_matches(match_id, puuid, guild_id);
       CREATE INDEX IF NOT EXISTS idx_player_elo_guild ON player_elo(guild_id);
       CREATE INDEX IF NOT EXISTS idx_player_elo_elo ON player_elo(guild_id, elo DESC);
     `);
@@ -71,6 +73,35 @@ class DatabaseManager {
       if (!error.message.includes('duplicate column name')) {
         console.error('Migration error:', error.message);
       }
+    }
+
+    // Migration: Update processed_matches table to new schema if needed
+    try {
+      // Check if guild_id column exists
+      const tableInfo = this.db.pragma('table_info(processed_matches)');
+      const hasGuildId = tableInfo.some(col => col.name === 'guild_id');
+
+      if (!hasGuildId) {
+        console.log('Migration: Updating processed_matches schema...');
+        this.db.exec(`
+          ALTER TABLE processed_matches RENAME TO processed_matches_old;
+          
+          CREATE TABLE processed_matches (
+            match_id TEXT,
+            puuid TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            processed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (match_id, puuid, guild_id)
+          );
+          
+          -- We cannot migrate old data accurately without guild_id, so we start fresh for match tracking logic
+          -- This might cause re-notifications for very recent matches, but tracked_accounts.last_match_id checks prevent that mostly.
+          DROP TABLE processed_matches_old;
+        `);
+        console.log('Migration: processed_matches schema updated.');
+      }
+    } catch (error) {
+      console.error('Migration error (processed_matches):', error.message);
     }
   }
 
@@ -116,20 +147,20 @@ class DatabaseManager {
     return stmt.all();
   }
 
-  updateLastMatchId(puuid, matchId) {
-    const stmt = this.db.prepare('UPDATE tracked_accounts SET last_match_id = ? WHERE puuid = ?');
-    return stmt.run(matchId, puuid);
+  updateLastMatchId(guildId, puuid, matchId) {
+    const stmt = this.db.prepare('UPDATE tracked_accounts SET last_match_id = ? WHERE puuid = ? AND guild_id = ?');
+    return stmt.run(matchId, puuid, guildId);
   }
 
   // Processed Matches
-  isMatchProcessed(matchId, puuid) {
-    const stmt = this.db.prepare('SELECT 1 FROM processed_matches WHERE match_id = ? AND puuid = ?');
-    return stmt.get(matchId, puuid) !== undefined;
+  isMatchProcessed(guildId, matchId, puuid) {
+    const stmt = this.db.prepare('SELECT 1 FROM processed_matches WHERE match_id = ? AND puuid = ? AND guild_id = ?');
+    return stmt.get(matchId, puuid, guildId) !== undefined;
   }
 
-  markMatchProcessed(matchId, puuid) {
-    const stmt = this.db.prepare('INSERT OR IGNORE INTO processed_matches (match_id, puuid) VALUES (?, ?)');
-    return stmt.run(matchId, puuid);
+  markMatchProcessed(guildId, matchId, puuid) {
+    const stmt = this.db.prepare('INSERT OR IGNORE INTO processed_matches (match_id, puuid, guild_id) VALUES (?, ?, ?)');
+    return stmt.run(matchId, puuid, guildId);
   }
 
   // ELO System

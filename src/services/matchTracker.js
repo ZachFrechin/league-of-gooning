@@ -65,7 +65,7 @@ class MatchTracker {
         return;
       }
 
-      if (this.database.isMatchProcessed(latestMatchId, account.puuid)) {
+      if (this.database.isMatchProcessed(account.guild_id, latestMatchId, account.puuid)) {
         return;
       }
 
@@ -76,8 +76,8 @@ class MatchTracker {
 
       if (playerStats.isRemake) {
         console.log(`Match ${latestMatchId} was a remake, skipping notification`);
-        this.database.markMatchProcessed(latestMatchId, account.puuid);
-        this.database.updateLastMatchId(account.puuid, latestMatchId);
+        this.database.markMatchProcessed(account.guild_id, latestMatchId, account.puuid);
+        this.database.updateLastMatchId(account.guild_id, account.puuid, latestMatchId);
         return;
       }
 
@@ -85,8 +85,8 @@ class MatchTracker {
 
       if (!guildSettings || !guildSettings.notification_channel_id) {
         console.log(`No notification channel set for guild ${account.guild_id}`);
-        this.database.markMatchProcessed(latestMatchId, account.puuid);
-        this.database.updateLastMatchId(account.puuid, latestMatchId);
+        this.database.markMatchProcessed(account.guild_id, latestMatchId, account.puuid);
+        this.database.updateLastMatchId(account.guild_id, account.puuid, latestMatchId);
         return;
       }
 
@@ -94,8 +94,8 @@ class MatchTracker {
 
       if (!channel) {
         console.log(`Channel ${guildSettings.notification_channel_id} not found`);
-        this.database.markMatchProcessed(latestMatchId, account.puuid);
-        this.database.updateLastMatchId(account.puuid, latestMatchId);
+        this.database.markMatchProcessed(account.guild_id, latestMatchId, account.puuid);
+        this.database.updateLastMatchId(account.guild_id, account.puuid, latestMatchId);
         return;
       }
 
@@ -106,7 +106,8 @@ class MatchTracker {
       }
 
       // Calculate performance score
-      const score = MatchFormatter.calculateScore(playerStats.participant, playerStats.gameDuration, playerStats.isRemake, matchData.info.participants);
+      const allParticipants = matchData.info.participants;
+      const score = MatchFormatter.calculateScore(playerStats.participant, playerStats.gameDuration, playerStats.isRemake, allParticipants);
 
       // Calculate ELO change
       const eloChange = EloCalculator.calculateEloChange(
@@ -141,8 +142,8 @@ class MatchTracker {
 
       await channel.send(message);
 
-      this.database.markMatchProcessed(latestMatchId, account.puuid);
-      this.database.updateLastMatchId(account.puuid, latestMatchId);
+      this.database.markMatchProcessed(account.guild_id, latestMatchId, account.puuid);
+      this.database.updateLastMatchId(account.guild_id, account.puuid, latestMatchId);
 
       console.log(`Match notification sent for ${account.game_name}#${account.tag_line} (ELO: ${eloChange > 0 ? '+' : ''}${eloChange})`);
     } catch (error) {
