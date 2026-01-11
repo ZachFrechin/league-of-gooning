@@ -106,7 +106,7 @@ class MatchTracker {
       }
 
       // Calculate performance score
-      const score = MatchFormatter.calculateScore(playerStats.participant, playerStats.gameDuration, playerStats.isRemake);
+      const score = MatchFormatter.calculateScore(playerStats.participant, playerStats.gameDuration, playerStats.isRemake, matchData.info.participants);
 
       // Calculate ELO change
       const eloChange = EloCalculator.calculateEloChange(

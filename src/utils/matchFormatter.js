@@ -4,67 +4,115 @@ const ITEM_NAMES = require('./itemNames');
 class MatchFormatter {
   static DDRAGON_VERSION = '14.1.1';
 
-  static calculateScore(stats, gameDuration, isRemake) {
+  static calculateScore(stats, gameDuration, isRemake, allParticipants = []) {
     if (isRemake) {
       return 0;
     }
 
     let score = 0;
-    const { kills, deaths, assists, totalMinionsKilled, neutralMinionsKilled, visionScore, totalDamageDealtToChampions } = stats;
+    const { kills, deaths, assists, totalMinionsKilled, neutralMinionsKilled, visionScore, totalDamageDealtToChampions, goldEarned } = stats;
     const gameMinutes = gameDuration / 60;
 
-    // === KDA SCORE (30 points max) ===
-    // Perfect KDA (0 deaths with kills/assists) = 30pts
-    // Scale based on KDA ratio
+    // Helper: Get Team Stats
+    let teamDamage = 0;
+    let teamGold = 0;
+    let teamKills = 0;
+
+    if (allParticipants && allParticipants.length > 0) {
+      const myTeamId = stats.teamId;
+      const myTeam = allParticipants.filter(p => p.teamId === myTeamId);
+      teamDamage = myTeam.reduce((sum, p) => sum + (p.totalDamageDealtToChampions || 0), 0);
+      teamGold = myTeam.reduce((sum, p) => sum + (p.goldEarned || 0), 0);
+      teamKills = myTeam.reduce((sum, p) => sum + p.kills, 0);
+    }
+
+    // === 1. COMBAT SCORE (Max 35 pts) ===
+    // KDA Component (Max 20 pts)
     const kda = deaths === 0 ? (kills + assists) : (kills + assists) / deaths;
-    if (deaths === 0 && (kills + assists) >= 10) score += 30;
-    else if (kda >= 6) score += 28;
-    else if (kda >= 5) score += 25;
-    else if (kda >= 4) score += 22;
-    else if (kda >= 3) score += 18;
-    else if (kda >= 2) score += 14;
-    else if (kda >= 1.5) score += 10;
-    else if (kda >= 1) score += 6;
-    else if (kda >= 0.5) score += 3;
-    else score += 0; // KDA < 0.5 = 0 points
+    let kdaScore = 0;
+    if (deaths === 0 && (kills + assists) >= 8) kdaScore = 20;
+    else if (kda >= 5) kdaScore = 20;
+    else if (kda >= 4) kdaScore = 17;
+    else if (kda >= 3) kdaScore = 14;
+    else if (kda >= 2) kdaScore = 10;
+    else if (kda >= 1) kdaScore = 5;
+    score += kdaScore;
 
-    // === KILL PARTICIPATION (20 points max) ===
-    // 100% KP = 20pts, scales linearly
-    const killParticipation = stats.challenges?.killParticipation || 0;
-    score += Math.round(killParticipation * 20);
+    // KP Component (Max 15 pts)
+    // Use calculated KP with team kills if possible, otherwise fallback to stats.challenges
+    let kp = 0;
+    if (teamKills > 0) {
+      kp = (kills + assists) / teamKills;
+    } else {
+      kp = stats.challenges?.killParticipation || 0;
+    }
+    score += Math.min(15, Math.floor(kp * 15));
 
-    // === CS PER MINUTE (15 points max) ===
+
+    // === 2. DAMAGE SCORE (Max 25 pts) ===
+    // Absolute: DPM
+    const dpm = (totalDamageDealtToChampions || 0) / gameMinutes;
+    let damageScoreAbs = 0;
+    if (dpm >= 1000) damageScoreAbs = 25;
+    else if (dpm >= 800) damageScoreAbs = 20;
+    else if (dpm >= 600) damageScoreAbs = 15;
+    else if (dpm >= 400) damageScoreAbs = 10;
+    else if (dpm >= 200) damageScoreAbs = 5;
+
+    // Relative: % of Team Damage
+    let damageScoreRel = 0;
+    if (teamDamage > 0) {
+      const dmgShare = (totalDamageDealtToChampions || 0) / teamDamage;
+      if (dmgShare >= 0.35) damageScoreRel = 25;      // >35% = Carry
+      else if (dmgShare >= 0.30) damageScoreRel = 22;
+      else if (dmgShare >= 0.25) damageScoreRel = 18; // >25% = Solid
+      else if (dmgShare >= 0.20) damageScoreRel = 14;
+      else if (dmgShare >= 0.15) damageScoreRel = 10;
+      else if (dmgShare >= 0.10) damageScoreRel = 5;
+    }
+
+    // Take the HIGHER score (rewards carries in short games OR long games)
+    score += Math.max(damageScoreAbs, damageScoreRel);
+
+
+    // === 3. FARMING & ECONOMY SCORE (Max 20 pts) ===
+    // Absolute: CS/min
     const totalCS = totalMinionsKilled + neutralMinionsKilled;
     const csPerMin = totalCS / gameMinutes;
-    if (csPerMin >= 10) score += 15;
-    else if (csPerMin >= 9) score += 13;
-    else if (csPerMin >= 8) score += 11;
-    else if (csPerMin >= 7) score += 9;
-    else if (csPerMin >= 6) score += 7;
-    else if (csPerMin >= 5) score += 5;
-    else if (csPerMin >= 4) score += 3;
-    else if (csPerMin >= 3) score += 1;
-    else score += 0; // < 3 CS/min = 0 points
+    let csScoreAbs = 0;
+    if (csPerMin >= 9) csScoreAbs = 20;
+    else if (csPerMin >= 8) csScoreAbs = 17;
+    else if (csPerMin >= 7) csScoreAbs = 14;
+    else if (csPerMin >= 6) csScoreAbs = 11;
+    else if (csPerMin >= 5) csScoreAbs = 8;
+    else if (csPerMin >= 4) csScoreAbs = 5;
 
-    // === VISION SCORE PER MINUTE (15 points max) ===
+    // Relative: Gold Share
+    let goldScoreRel = 0;
+    if (teamGold > 0) {
+      const goldShare = (goldEarned || 0) / teamGold;
+      if (goldShare >= 0.24) goldScoreRel = 20;      // >24% income = Primary Carry
+      else if (goldShare >= 0.21) goldScoreRel = 17;
+      else if (goldShare >= 0.19) goldScoreRel = 14;
+      else if (goldShare >= 0.17) goldScoreRel = 11;
+      else if (goldShare >= 0.15) goldScoreRel = 8;
+    }
+
+    // Role adjustment: distinct bonus for Supports who don't CS?
+    // For now, take MAX to let Carries win via Gold% or CS. 
+    // Supports will struggle here unless we detect role, but they usually get high vision.
+    score += Math.max(csScoreAbs, goldScoreRel);
+
+
+    // === 4. VISION SCORE (Max 20 pts) ===
     const visionPerMin = visionScore / gameMinutes;
-    if (visionPerMin >= 2.5) score += 15;
-    else if (visionPerMin >= 2.0) score += 12;
-    else if (visionPerMin >= 1.5) score += 9;
-    else if (visionPerMin >= 1.0) score += 6;
-    else if (visionPerMin >= 0.5) score += 3;
-    else score += 0; // < 0.5 vision/min = 0 points
+    if (visionPerMin >= 2.0) score += 20;
+    else if (visionPerMin >= 1.5) score += 16;
+    else if (visionPerMin >= 1.0) score += 12;
+    else if (visionPerMin >= 0.75) score += 8;
+    else if (visionPerMin >= 0.5) score += 4;
 
-    // === DAMAGE PER MINUTE (20 points max) ===
-    const damagePerMin = (totalDamageDealtToChampions || 0) / gameMinutes;
-    if (damagePerMin >= 1200) score += 20;
-    else if (damagePerMin >= 1000) score += 17;
-    else if (damagePerMin >= 800) score += 14;
-    else if (damagePerMin >= 600) score += 11;
-    else if (damagePerMin >= 400) score += 8;
-    else if (damagePerMin >= 200) score += 4;
-    else score += 0; // < 200 dmg/min = 0 points
-
+    // Cap at 100
     return Math.min(100, Math.max(0, Math.round(score)));
   }
 
@@ -99,13 +147,23 @@ class MatchFormatter {
   }
 
   static formatTeamComposition(participants, playerPuuid) {
+    const maxNameLength = Math.max(...participants.map(p => p.championName.length));
+
     return participants
       .map(p => {
         const isPlayer = p.puuid === playerPuuid;
         const kda = `${p.kills}/${p.deaths}/${p.assists}`;
-        const prefix = isPlayer ? '**➤' : '  ';
-        const suffix = isPlayer ? '**' : '';
-        return `${prefix} ${p.championName}: ${kda}${suffix}`;
+        // Pad champion name for alignment
+        const championName = p.championName.padEnd(maxNameLength, ' ');
+        // Align KDA by adding padding before it if needed, though usually fixed width font helps
+        // Let's just align the champion name column first
+
+        const prefix = isPlayer ? '> ' : '  '; // Changed marker to be consistent length (2 chars)
+        const suffix = isPlayer ? ' <' : '  '; // Added suffix for symmetry if desired, or just empty space
+
+        // Ensure consistent spacing
+        // Format: "> ChampionName   K/D/A"
+        return `${prefix}${championName}   ${kda}`;
       })
       .join('\n');
   }
@@ -141,6 +199,7 @@ class MatchFormatter {
 
   static formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null, eloChange = 0, currentElo = 1000) {
     const { participant, gameDuration, isRemake, gameMode, queueId } = playerStats;
+    const allParticipants = matchData.info.participants;
 
     if (isRemake) {
       const embed = new EmbedBuilder()
@@ -151,7 +210,7 @@ class MatchFormatter {
       return { embeds: [embed] };
     }
 
-    const score = this.calculateScore(participant, gameDuration, isRemake);
+    const score = this.calculateScore(participant, gameDuration, isRemake, allParticipants);
     const color = participant.win ? '#3498db' : '#e74c3c';
     const result = participant.win ? '🏆 VICTORY' : '💀 DEFEAT';
 
@@ -175,7 +234,6 @@ class MatchFormatter {
     const queueType = this.getQueueType(queueId);
     const duration = this.formatDuration(gameDuration);
 
-    const allParticipants = matchData.info.participants;
     const playerTeam = allParticipants.filter(p => p.teamId === participant.teamId);
     const enemyTeam = allParticipants.filter(p => p.teamId !== participant.teamId);
 
@@ -224,7 +282,7 @@ class MatchFormatter {
         },
         {
           name: '🎯 Kill Participation',
-          value: `\`\`\`\n${killParticipation}\n\`\`\``,
+          value: `\`\`\`\n${killParticipation}\nof Team Kills\n\`\`\``,
           inline: true
         },
         {
@@ -244,7 +302,7 @@ class MatchFormatter {
         },
         {
           name: '💰 Gold',
-          value: `\`\`\`\n${(participant.goldEarned || 0).toLocaleString()}\n\`\`\``,
+          value: `\`\`\`\n${(participant.goldEarned || 0).toLocaleString()}\nTotal Earned\n\`\`\``,
           inline: true
         },
         {
