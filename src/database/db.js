@@ -56,12 +56,6 @@ class DatabaseManager {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (guild_id, puuid)
       );
-
-      CREATE INDEX IF NOT EXISTS idx_tracked_accounts_guild ON tracked_accounts(guild_id);
-      CREATE INDEX IF NOT EXISTS idx_tracked_accounts_puuid ON tracked_accounts(puuid);
-      CREATE INDEX IF NOT EXISTS idx_processed_matches_lookup ON processed_matches(match_id, puuid, guild_id);
-      CREATE INDEX IF NOT EXISTS idx_player_elo_guild ON player_elo(guild_id);
-      CREATE INDEX IF NOT EXISTS idx_player_elo_elo ON player_elo(guild_id, elo DESC);
     `);
 
     // Migration: Add summoner_id column if it doesn't exist
@@ -69,7 +63,6 @@ class DatabaseManager {
       this.db.exec(`ALTER TABLE tracked_accounts ADD COLUMN summoner_id TEXT;`);
       console.log('Migration: Added summoner_id column');
     } catch (error) {
-      // Column already exists, ignore error
       if (!error.message.includes('duplicate column name')) {
         console.error('Migration error:', error.message);
       }
@@ -77,7 +70,6 @@ class DatabaseManager {
 
     // Migration: Update processed_matches table to new schema if needed
     try {
-      // Check if guild_id column exists
       const tableInfo = this.db.pragma('table_info(processed_matches)');
       const hasGuildId = tableInfo.some(col => col.name === 'guild_id');
 
@@ -94,8 +86,6 @@ class DatabaseManager {
             PRIMARY KEY (match_id, puuid, guild_id)
           );
           
-          -- We cannot migrate old data accurately without guild_id, so we start fresh for match tracking logic
-          -- This might cause re-notifications for very recent matches, but tracked_accounts.last_match_id checks prevent that mostly.
           DROP TABLE processed_matches_old;
         `);
         console.log('Migration: processed_matches schema updated.');
@@ -103,6 +93,15 @@ class DatabaseManager {
     } catch (error) {
       console.error('Migration error (processed_matches):', error.message);
     }
+
+    // Create Indexes AFTER migrations to ensure columns exist
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_tracked_accounts_guild ON tracked_accounts(guild_id);
+      CREATE INDEX IF NOT EXISTS idx_tracked_accounts_puuid ON tracked_accounts(puuid);
+      CREATE INDEX IF NOT EXISTS idx_processed_matches_lookup ON processed_matches(match_id, puuid, guild_id);
+      CREATE INDEX IF NOT EXISTS idx_player_elo_guild ON player_elo(guild_id);
+      CREATE INDEX IF NOT EXISTS idx_player_elo_elo ON player_elo(guild_id, elo DESC);
+    `);
   }
 
   // Guild Settings
