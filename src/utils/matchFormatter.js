@@ -413,13 +413,13 @@ class MatchFormatter {
           inline: false
         },
         {
-          name: '🤡 Pute de la game (Win Team)',
-          value: `**${worstWinner.championName}** (${worstWinner.summonerName})\nScore: **${worstWinner.score}/100**\n*A rendu la game difficile*`,
+          name: '🤡 Pute de la game Win Team',
+          value: `\`\`\`\n${worstWinner.championName} (${worstWinner.riotIdGameName || worstWinner.summonerName})\nScore: ${worstWinner.score}/100\n\`\`\``,
           inline: true
         },
         {
-          name: '🤡 Pute de la game (Lose Team)',
-          value: `**${worstLoser.championName}** (${worstLoser.summonerName})\nScore: **${worstLoser.score}/100**\n*Responsable de la défaite*`,
+          name: '🤡 Pute de la game Lose Team',
+          value: `\`\`\`\n${worstLoser.championName} (${worstLoser.riotIdGameName || worstLoser.summonerName})\nScore: ${worstLoser.score}/100\n\`\`\``,
           inline: true
         }
       );
