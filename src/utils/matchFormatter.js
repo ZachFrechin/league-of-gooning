@@ -184,22 +184,42 @@ class MatchFormatter {
   /**
    * Shame Score - Used ONLY for determining "Pute de la game"
    * Heavily penalizes deaths. Lower score = worse player.
+   * Supports are evaluated on vision instead of kills.
    */
   static calculateShameScore(stats, gameDuration) {
-    const { kills, deaths, assists } = stats;
+    const { kills, deaths, assists, visionScore, teamPosition } = stats;
     const gameMinutes = gameDuration / 60;
+    const isSupport = teamPosition === 'UTILITY';
 
     // Start with base score
     let shameScore = 50;
 
-    // Deaths are HEAVILY penalized (-8 per death)
+    // Deaths are HEAVILY penalized (-8 per death for everyone)
     shameScore -= deaths * 8;
 
-    // Kills help a bit (+3 per kill)
-    shameScore += kills * 3;
+    if (isSupport) {
+      // SUPPORT: Judged on assists and vision, NOT kills
 
-    // Assists help a little (+1 per assist)
-    shameScore += assists * 1;
+      // Assists are important (+2 per assist)
+      shameScore += assists * 2;
+
+      // Vision score per minute bonus
+      const visionPerMin = visionScore / gameMinutes;
+      if (visionPerMin >= 2.0) shameScore += 20;
+      else if (visionPerMin >= 1.5) shameScore += 15;
+      else if (visionPerMin >= 1.0) shameScore += 10;
+      else if (visionPerMin >= 0.5) shameScore += 5;
+      else shameScore -= 10; // Very low vision = bad support
+
+    } else {
+      // CARRY/OTHER: Judged on kills
+
+      // Kills help a bit (+3 per kill)
+      shameScore += kills * 3;
+
+      // Assists help a little (+1 per assist)
+      shameScore += assists * 1;
+    }
 
     // Deaths per minute penalty (dying too fast is even worse)
     const deathsPerMin = deaths / gameMinutes;
@@ -207,7 +227,7 @@ class MatchFormatter {
     else if (deathsPerMin >= 0.3) shameScore -= 10;  // About 1 death per 3 min
     else if (deathsPerMin >= 0.2) shameScore -= 5;
 
-    // KDA ratio penalty
+    // KDA ratio penalty (applies to everyone)
     const kda = deaths === 0 ? (kills + assists) : (kills + assists) / deaths;
     if (kda < 0.5) shameScore -= 20;      // Very bad KDA
     else if (kda < 1) shameScore -= 10;   // Bad KDA
