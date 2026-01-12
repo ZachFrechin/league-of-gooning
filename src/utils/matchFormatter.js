@@ -181,6 +181,41 @@ class MatchFormatter {
     return Math.min(100, Math.max(0, Math.round(score)));
   }
 
+  /**
+   * Shame Score - Used ONLY for determining "Pute de la game"
+   * Heavily penalizes deaths. Lower score = worse player.
+   */
+  static calculateShameScore(stats, gameDuration) {
+    const { kills, deaths, assists } = stats;
+    const gameMinutes = gameDuration / 60;
+
+    // Start with base score
+    let shameScore = 50;
+
+    // Deaths are HEAVILY penalized (-8 per death)
+    shameScore -= deaths * 8;
+
+    // Kills help a bit (+3 per kill)
+    shameScore += kills * 3;
+
+    // Assists help a little (+1 per assist)
+    shameScore += assists * 1;
+
+    // Deaths per minute penalty (dying too fast is even worse)
+    const deathsPerMin = deaths / gameMinutes;
+    if (deathsPerMin >= 0.5) shameScore -= 15;       // More than 1 death per 2 min
+    else if (deathsPerMin >= 0.3) shameScore -= 10;  // About 1 death per 3 min
+    else if (deathsPerMin >= 0.2) shameScore -= 5;
+
+    // KDA ratio penalty
+    const kda = deaths === 0 ? (kills + assists) : (kills + assists) / deaths;
+    if (kda < 0.5) shameScore -= 20;      // Very bad KDA
+    else if (kda < 1) shameScore -= 10;   // Bad KDA
+    else if (kda < 2) shameScore -= 5;
+
+    return Math.max(0, shameScore);
+  }
+
   static getChampionIconUrl(championName) {
     return `https://ddragon.leagueoflegends.com/cdn/${this.DDRAGON_VERSION}/img/champion/${championName}.png`;
   }
@@ -393,17 +428,19 @@ class MatchFormatter {
       );
 
     // Feature "Pute de la game" (Worst Player)
-    // Calculate score for ALL participants to find the lowest
+    // Use a separate "shame score" that heavily penalizes deaths
     const scoredParticipants = allParticipants.map(p => {
       const pScore = this.calculateScore(p, gameDuration, isRemake, allParticipants);
-      return { ...p, score: pScore };
+      const shameScore = this.calculateShameScore(p, gameDuration);
+      return { ...p, score: pScore, shameScore: shameScore };
     });
 
     const winningTeam = scoredParticipants.filter(p => p.win);
     const losingTeam = scoredParticipants.filter(p => !p.win);
 
-    const worstWinner = winningTeam.reduce((min, p) => p.score < min.score ? p : min, winningTeam[0]);
-    const worstLoser = losingTeam.reduce((min, p) => p.score < min.score ? p : min, losingTeam[0]);
+    // Find worst by SHAME score (death-heavy), not performance score
+    const worstWinner = winningTeam.reduce((min, p) => p.shameScore < min.shameScore ? p : min, winningTeam[0]);
+    const worstLoser = losingTeam.reduce((min, p) => p.shameScore < min.shameScore ? p : min, losingTeam[0]);
 
     if (worstWinner && worstLoser) {
       embed.addFields(
@@ -414,12 +451,12 @@ class MatchFormatter {
         },
         {
           name: '🤡 Pute de la game Win Team',
-          value: `\`\`\`\n${worstWinner.championName} (${worstWinner.riotIdGameName || worstWinner.summonerName})\nScore: ${worstWinner.score}/100\n\`\`\``,
+          value: `\`\`\`\n${worstWinner.championName} (${worstWinner.riotIdGameName || worstWinner.summonerName})\n${worstWinner.kills}/${worstWinner.deaths}/${worstWinner.assists}\n\`\`\``,
           inline: true
         },
         {
           name: '🤡 Pute de la game Lose Team',
-          value: `\`\`\`\n${worstLoser.championName} (${worstLoser.riotIdGameName || worstLoser.summonerName})\nScore: ${worstLoser.score}/100\n\`\`\``,
+          value: `\`\`\`\n${worstLoser.championName} (${worstLoser.riotIdGameName || worstLoser.summonerName})\n${worstLoser.kills}/${worstLoser.deaths}/${worstLoser.assists}\n\`\`\``,
           inline: true
         }
       );
