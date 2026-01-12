@@ -162,13 +162,13 @@ class MatchTracker {
         currentElo
       );
 
-      // Update player ELO
+      // Update player ELO and stats
       this.database.updatePlayerElo(
         account.guild_id,
         account.puuid,
         eloChange,
         playerStats.participant.win,
-        playerStats.participant.kills,
+        playerStats.participant,  // Pass full participant stats
         score
       );
 
@@ -182,7 +182,8 @@ class MatchTracker {
         account.tag_line,
         rankedInfo,
         eloChange,
-        playerElo?.elo || 1000
+        playerElo?.elo || 1000,
+        playerElo?.current_streak || 0  // Pass streak
       );
 
       await channel.send(message);

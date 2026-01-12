@@ -94,6 +94,30 @@ class DatabaseManager {
       console.error('Migration error (processed_matches):', error.message);
     }
 
+    // Migration: Add streak and stats columns to player_elo
+    const newColumns = [
+      { name: 'current_streak', def: 'INTEGER DEFAULT 0' },
+      { name: 'best_win_streak', def: 'INTEGER DEFAULT 0' },
+      { name: 'worst_lose_streak', def: 'INTEGER DEFAULT 0' },
+      { name: 'total_damage', def: 'INTEGER DEFAULT 0' },
+      { name: 'total_cs', def: 'INTEGER DEFAULT 0' },
+      { name: 'total_vision', def: 'INTEGER DEFAULT 0' },
+      { name: 'total_deaths', def: 'INTEGER DEFAULT 0' },
+      { name: 'total_assists', def: 'INTEGER DEFAULT 0' },
+      { name: 'peak_elo', def: 'INTEGER DEFAULT 1000' }
+    ];
+
+    for (const col of newColumns) {
+      try {
+        this.db.exec(`ALTER TABLE player_elo ADD COLUMN ${col.name} ${col.def};`);
+        console.log(`Migration: Added ${col.name} column to player_elo`);
+      } catch (error) {
+        if (!error.message.includes('duplicate column name')) {
+          console.error(`Migration error (${col.name}):`, error.message);
+        }
+      }
+    }
+
     // Create Indexes AFTER migrations to ensure columns exist
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_tracked_accounts_guild ON tracked_accounts(guild_id);
@@ -155,6 +179,11 @@ class DatabaseManager {
     return stmt.all();
   }
 
+  getTrackedAccount(guildId, gameName, tagLine) {
+    const stmt = this.db.prepare('SELECT * FROM tracked_accounts WHERE guild_id = ? AND game_name = ? AND tag_line = ?');
+    return stmt.get(guildId, gameName, tagLine);
+  }
+
   updateLastMatchId(guildId, puuid, matchId) {
     const stmt = this.db.prepare('UPDATE tracked_accounts SET last_match_id = ? WHERE puuid = ? AND guild_id = ?');
     return stmt.run(matchId, puuid, guildId);
@@ -177,30 +206,77 @@ class DatabaseManager {
     return stmt.get(guildId, puuid);
   }
 
-  updatePlayerElo(guildId, puuid, eloChange, won, kills, score) {
+  updatePlayerElo(guildId, puuid, eloChange, won, stats, score) {
     const current = this.getPlayerElo(guildId, puuid);
+    const { kills = 0, deaths = 0, assists = 0, totalDamageDealtToChampions = 0, totalMinionsKilled = 0, neutralMinionsKilled = 0, visionScore = 0 } = stats;
+    const totalCS = totalMinionsKilled + neutralMinionsKilled;
 
     if (!current) {
       // Initialize new player
+      const newElo = 1000 + eloChange;
+      const streak = won ? 1 : -1;
       const stmt = this.db.prepare(`
-        INSERT INTO player_elo (guild_id, puuid, elo, matches_played, wins, losses, total_kills, total_score, updated_at)
-        VALUES (?, ?, ?, 1, ?, ?, ?, ?, datetime('now'))
+        INSERT INTO player_elo (
+          guild_id, puuid, elo, matches_played, wins, losses, 
+          total_kills, total_score, current_streak, best_win_streak, worst_lose_streak,
+          total_damage, total_cs, total_vision, total_deaths, total_assists, peak_elo, updated_at
+        )
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `);
-      return stmt.run(guildId, puuid, 1000 + eloChange, won ? 1 : 0, won ? 0 : 1, kills, score);
+      return stmt.run(
+        guildId, puuid, newElo,
+        won ? 1 : 0, won ? 0 : 1,
+        kills, score,
+        streak, won ? 1 : 0, won ? 0 : -1,
+        totalDamageDealtToChampions, totalCS, visionScore, deaths, assists, newElo
+      );
     } else {
+      // Calculate new streak
+      let newStreak;
+      if (won) {
+        newStreak = current.current_streak >= 0 ? current.current_streak + 1 : 1;
+      } else {
+        newStreak = current.current_streak <= 0 ? current.current_streak - 1 : -1;
+      }
+
+      // Update best/worst streaks
+      const bestWin = Math.max(current.best_win_streak || 0, newStreak);
+      const worstLose = Math.min(current.worst_lose_streak || 0, newStreak);
+
+      // Calculate new ELO and peak
+      const newElo = current.elo + eloChange;
+      const peakElo = Math.max(current.peak_elo || 1000, newElo);
+
       // Update existing player
       const stmt = this.db.prepare(`
         UPDATE player_elo
-        SET elo = elo + ?,
+        SET elo = ?,
             matches_played = matches_played + 1,
             wins = wins + ?,
             losses = losses + ?,
             total_kills = total_kills + ?,
             total_score = total_score + ?,
+            current_streak = ?,
+            best_win_streak = ?,
+            worst_lose_streak = ?,
+            total_damage = total_damage + ?,
+            total_cs = total_cs + ?,
+            total_vision = total_vision + ?,
+            total_deaths = total_deaths + ?,
+            total_assists = total_assists + ?,
+            peak_elo = ?,
             updated_at = datetime('now')
         WHERE guild_id = ? AND puuid = ?
       `);
-      return stmt.run(eloChange, won ? 1 : 0, won ? 0 : 1, kills, score, guildId, puuid);
+      return stmt.run(
+        newElo,
+        won ? 1 : 0, won ? 0 : 1,
+        kills, score,
+        newStreak, bestWin, worstLose,
+        totalDamageDealtToChampions, totalCS, visionScore, deaths, assists,
+        peakElo,
+        guildId, puuid
+      );
     }
   }
 

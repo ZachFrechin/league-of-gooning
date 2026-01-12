@@ -41,17 +41,17 @@ class MatchFormatter {
       // SUPPORT SCORING (UTILITY)
       // ==========================================
 
-      // 1. VISION (Max 40 pts) - Primary Stat
+      // 1. VISION (Max 40 pts) - Primary Stat (STRICT)
       const visionPerMin = visionScore / gameMinutes;
       let visionScoreCalc = 0;
-      if (visionPerMin >= 2.5) visionScoreCalc = 40;
-      else if (visionPerMin >= 2.0) visionScoreCalc = 35;
-      else if (visionPerMin >= 1.75) visionScoreCalc = 30;
-      else if (visionPerMin >= 1.5) visionScoreCalc = 25;
-      else if (visionPerMin >= 1.25) visionScoreCalc = 20;
-      else if (visionPerMin >= 1.0) visionScoreCalc = 15;
-      else if (visionPerMin >= 0.75) visionScoreCalc = 10;
-      else if (visionPerMin >= 0.5) visionScoreCalc = 5;
+      if (visionPerMin >= 3.0) visionScoreCalc = 40;       // Very high bar
+      else if (visionPerMin >= 2.5) visionScoreCalc = 35;
+      else if (visionPerMin >= 2.2) visionScoreCalc = 30;
+      else if (visionPerMin >= 2.0) visionScoreCalc = 25;
+      else if (visionPerMin >= 1.75) visionScoreCalc = 20;
+      else if (visionPerMin >= 1.5) visionScoreCalc = 15;
+      else if (visionPerMin >= 1.25) visionScoreCalc = 10;
+      else if (visionPerMin >= 1.0) visionScoreCalc = 5;
       score += visionScoreCalc;
 
       // 2. COMBAT (Max 50 pts)
@@ -317,7 +317,7 @@ class MatchFormatter {
     return `${emoji} ${rank.tier} ${rank.rank} - ${rank.leaguePoints} LP`;
   }
 
-  static formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null, eloChange = 0, currentElo = 1000) {
+  static formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null, eloChange = 0, currentElo = 1000, currentStreak = 0) {
     const { participant, gameDuration, isRemake, gameMode, queueId } = playerStats;
     const allParticipants = matchData.info.participants;
 
@@ -374,6 +374,12 @@ class MatchFormatter {
     const eloRank = EloCalculator.getEloRank(currentElo);
     const eloChangeDisplay = eloChange > 0 ? `+${eloChange}` : `${eloChange}`;
     description += `\n${eloRank.name}: ${currentElo} ELO (${eloChangeDisplay})`;
+
+    // Add streak message
+    const streakMessage = this.getStreakMessage(currentStreak);
+    if (streakMessage) {
+      description += `\n\n${streakMessage}`;
+    }
 
     const embed = new EmbedBuilder()
       .setColor(color)
@@ -527,6 +533,45 @@ class MatchFormatter {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}m ${secs}s`;
+  }
+
+  /**
+   * Generate a streak message for win/lose streaks of 3+
+   */
+  static getStreakMessage(streak) {
+    if (streak >= 5) {
+      const messages = [
+        `🔥 **${streak} VICTOIRES D'AFFILÉE!** On fire! 🔥`,
+        `🚀 **WIN STREAK: ${streak}** - INARRÊTABLE!`,
+        `⭐ **${streak} wins** - Tu fais peur là!`,
+        `👑 **${streak} victoires** - Le roi de la Rift!`
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    } else if (streak >= 3) {
+      const messages = [
+        `🔥 **${streak} victoires d'affilée!**`,
+        `📈 **Win streak: ${streak}** - Continue!`,
+        `✨ **${streak} wins** - Ça roule!`
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    } else if (streak <= -5) {
+      const messages = [
+        `💀 **${Math.abs(streak)} DÉFAITES D'AFFILÉE** - Skill issue confirmé`,
+        `🤡 **LOSE STREAK: ${Math.abs(streak)}** - C'est l'heure d'aller dehors`,
+        `📉 **${Math.abs(streak)} losses** - Désinstalle le jeu stp`,
+        `🚽 **${Math.abs(streak)} défaites** - Tu grief ou quoi?`,
+        `😭 **${Math.abs(streak)} loses** - Même ton ADC carry mieux`
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    } else if (streak <= -3) {
+      const messages = [
+        `📉 **${Math.abs(streak)} défaites d'affilée...** Ça arrive!`,
+        `💀 **Lose streak: ${Math.abs(streak)}** - Prends une pause?`,
+        `😬 **${Math.abs(streak)} losses** - ARAM time?`
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
+    return null;
   }
 }
 
