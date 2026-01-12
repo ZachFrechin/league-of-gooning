@@ -135,17 +135,17 @@ class MatchFormatter {
       if (finalDamageScore > 0 && totalDamageDealtToChampions >= maxTeamDamage) finalDamageScore += 5;
       score += Math.min(30, finalDamageScore);
 
-      // 3. FARMING & GOLD (Max 30 pts) - STRICT CS REQUIREMENT
-      // Absolute CS/min - The only way to get perfect score
+      // 3. FARMING & GOLD (Max 30 pts) - CS REQUIREMENT
+      // Absolute CS/min - 8 CS/min = perfect score
       const totalCS = totalMinionsKilled + neutralMinionsKilled;
       const csPerMin = totalCS / gameMinutes;
       let csScoreAbs = 0;
-      if (csPerMin >= 10) csScoreAbs = 30; // Perfect 10/min -> 30 pts
-      else if (csPerMin >= 9) csScoreAbs = 25;
-      else if (csPerMin >= 8) csScoreAbs = 20;
-      else if (csPerMin >= 7) csScoreAbs = 15;
-      else if (csPerMin >= 6) csScoreAbs = 10;
-      else if (csPerMin >= 5) csScoreAbs = 5;
+      if (csPerMin >= 8) csScoreAbs = 30;      // 8/min -> 30 pts (Perfect)
+      else if (csPerMin >= 7) csScoreAbs = 25;
+      else if (csPerMin >= 6) csScoreAbs = 20;
+      else if (csPerMin >= 5) csScoreAbs = 15;
+      else if (csPerMin >= 4) csScoreAbs = 10;
+      else if (csPerMin >= 3) csScoreAbs = 5;
 
       // Relative Gold Bonus (Safety net, but capped at 20)
       let goldScoreRel = 0;
@@ -163,8 +163,8 @@ class MatchFormatter {
         finalFarmScore += 5;
       }
 
-      // STRICT RULE: If CS < 9.5, Cap Farm Score at 25.
-      if (csPerMin < 9.5) {
+      // STRICT RULE: If CS < 7.5, Cap Farm Score at 25.
+      if (csPerMin < 7.5) {
         finalFarmScore = Math.min(25, finalFarmScore);
       }
 
