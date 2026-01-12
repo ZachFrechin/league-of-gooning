@@ -1,67 +1,84 @@
 class EloCalculator {
-  // Calculate ELO change based on match performance
-  static calculateEloChange(participant, score, rankedInfo, queueId) {
-    let eloChange = 0;
+  /**
+   * Calculate ELO change based on 3 factors:
+   * 1. Score (performance)
+   * 2. Match Count (placement phase)
+   * 3. Current ELO (rank pressure)
+   */
+  static calculateEloChange(participant, score, rankedInfo, queueId, matchesPlayed = 0, currentElo = 1000) {
+    const isWin = participant.win;
 
-    // Base points for win/loss
-    if (participant.win) {
-      eloChange += 25; // Base win
+    // Base values
+    const baseWin = 25;
+    const baseLoss = -20;
+
+    // === FACTOR 1: Score Multiplier ===
+    // Score 100 = 2x, Score 50 = 1x, Score 0 = 0.4x (capped)
+    const scoreMultiplier = Math.max(0.4, score / 50);
+
+    // === FACTOR 2: Match Count Factor (Placement Phase) ===
+    const { gainFactor: matchGain, lossFactor: matchLoss } = this.getMatchCountFactors(matchesPlayed);
+
+    // === FACTOR 3: ELO Rank Factor ===
+    const { gainFactor: eloGain, lossFactor: eloLoss } = this.getEloFactors(currentElo);
+
+    let eloChange;
+    if (isWin) {
+      // High score = more gains
+      eloChange = baseWin * scoreMultiplier * matchGain * eloGain;
     } else {
-      eloChange -= 15; // Base loss
+      // High score = less losses (divide by scoreMultiplier)
+      eloChange = baseLoss / scoreMultiplier * matchLoss * eloLoss;
     }
 
-    // Performance bonus (score 0-100 -> -10 to +10 points)
-    const scoreBonus = Math.round((score - 50) / 5); // 100 score = +10, 0 score = -10
-    eloChange += scoreBonus;
+    // Round and cap
+    eloChange = Math.round(eloChange);
 
-    // Kill bonus (diminishing returns)
-    const killBonus = Math.min(participant.kills * 0.5, 10); // Max +10 for 20+ kills
-    eloChange += Math.round(killBonus);
-
-    // Vision bonus (good vision is important!)
-    const visionPerMin = participant.visionScore / (participant.challenges?.gameLength || 1800 / 60);
-    if (visionPerMin >= 2) eloChange += 3;
-    else if (visionPerMin >= 1.5) eloChange += 2;
-    else if (visionPerMin >= 1) eloChange += 1;
-
-    // Rank multiplier (slightly affects gain/loss)
-    const rankMultiplier = this.getRankMultiplier(rankedInfo, queueId);
-    eloChange = Math.round(eloChange * rankMultiplier);
-
-    // Ensure minimum change
-    if (participant.win && eloChange < 5) eloChange = 5;
-    if (!participant.win && eloChange > -5) eloChange = -5;
+    // Minimum change to always feel impactful
+    if (isWin && eloChange < 5) eloChange = 5;
+    if (!isWin && eloChange > -5) eloChange = -5;
 
     // Cap maximum change
-    eloChange = Math.max(-50, Math.min(50, eloChange));
+    eloChange = Math.max(-100, Math.min(100, eloChange));
 
     return eloChange;
   }
 
-  static getRankMultiplier(rankedInfo, queueId) {
-    if (!rankedInfo || rankedInfo.length === 0) return 1.0;
+  /**
+   * Match count affects volatility (placement phase)
+   * Early games: Big gains, small losses (easy climb)
+   * Many games: Smaller gains, bigger losses (stability/pressure)
+   */
+  static getMatchCountFactors(matchesPlayed) {
+    if (matchesPlayed <= 10) {
+      return { gainFactor: 1.50, lossFactor: 0.50 };
+    } else if (matchesPlayed <= 30) {
+      return { gainFactor: 1.20, lossFactor: 0.80 };
+    } else if (matchesPlayed <= 50) {
+      return { gainFactor: 1.00, lossFactor: 1.00 };
+    } else if (matchesPlayed <= 100) {
+      return { gainFactor: 0.90, lossFactor: 1.20 };
+    } else {
+      return { gainFactor: 0.80, lossFactor: 1.50 };
+    }
+  }
 
-    const queueType = queueId === 420 ? 'RANKED_SOLO_5x5' : queueId === 440 ? 'RANKED_FLEX_SR' : null;
-    if (!queueType) return 1.0;
-
-    const rank = rankedInfo.find(r => r.queueType === queueType);
-    if (!rank) return 1.0;
-
-    // Higher ranks get slightly less ELO change (more stable)
-    const tierMultipliers = {
-      'IRON': 1.15,
-      'BRONZE': 1.10,
-      'SILVER': 1.05,
-      'GOLD': 1.0,
-      'PLATINUM': 0.95,
-      'EMERALD': 0.93,
-      'DIAMOND': 0.90,
-      'MASTER': 0.88,
-      'GRANDMASTER': 0.85,
-      'CHALLENGER': 0.82
-    };
-
-    return tierMultipliers[rank.tier] || 1.0;
+  /**
+   * ELO rank affects difficulty to climb/maintain
+   * High ELO: Less gains, more losses
+   */
+  static getEloFactors(currentElo) {
+    if (currentElo < 1200) {
+      return { gainFactor: 1.00, lossFactor: 0.80 };
+    } else if (currentElo < 1400) {
+      return { gainFactor: 0.95, lossFactor: 1.00 };
+    } else if (currentElo < 1600) {
+      return { gainFactor: 0.85, lossFactor: 1.10 };
+    } else if (currentElo < 1800) {
+      return { gainFactor: 0.75, lossFactor: 1.20 };
+    } else {
+      return { gainFactor: 0.65, lossFactor: 1.40 };
+    }
   }
 
   static getEloRank(elo) {

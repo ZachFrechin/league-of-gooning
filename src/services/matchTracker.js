@@ -109,12 +109,19 @@ class MatchTracker {
       const allParticipants = matchData.info.participants;
       const score = MatchFormatter.calculateScore(playerStats.participant, playerStats.gameDuration, playerStats.isRemake, allParticipants);
 
-      // Calculate ELO change
+      // Get current player ELO data BEFORE calculating change
+      const playerEloBefore = this.database.getPlayerElo(account.guild_id, account.puuid);
+      const currentElo = playerEloBefore?.elo || 1000;
+      const matchesPlayed = playerEloBefore?.matches_played || 0;
+
+      // Calculate ELO change (now with matchesPlayed and currentElo)
       const eloChange = EloCalculator.calculateEloChange(
         playerStats.participant,
         score,
         rankedInfo,
-        playerStats.queueId
+        playerStats.queueId,
+        matchesPlayed,
+        currentElo
       );
 
       // Update player ELO
