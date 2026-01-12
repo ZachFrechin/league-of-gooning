@@ -43,7 +43,11 @@ class RiotAPI {
       });
       return response.data;
     } catch (error) {
-      throw new Error(`Failed to fetch match IDs: ${error.message}`);
+      const statusCode = error.response?.status || 'Unknown';
+      const errorData = error.response?.data || {};
+      console.error(`[Riot API Error] Status: ${statusCode}, URL: ${error.config?.url}`);
+      console.error(`[Riot API Error] Response:`, JSON.stringify(errorData, null, 2));
+      throw new Error(`Failed to fetch match IDs: Status ${statusCode} - ${errorData.status?.message || error.message}`);
     }
   }
 
