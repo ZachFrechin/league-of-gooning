@@ -4,45 +4,22 @@ const EloCalculator = require('../utils/eloCalculator');
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('profile')
-		.setDescription('Display your League of Legends profile stats')
+		.setDescription('Display a player\'s League of Legends profile stats')
 		.addStringOption(option =>
-			option.setName('player')
-				.setDescription('Player Riot ID (e.g., PlayerName#TAG)')
-				.setRequired(false)),
+			option.setName('gamename')
+				.setDescription('Game Name (without tag)')
+				.setRequired(true))
+		.addStringOption(option =>
+			option.setName('tag')
+				.setDescription('Tag Line (e.g., EUW, NA1)')
+				.setRequired(true)),
 
 	async execute(interaction, database) {
 		await interaction.deferReply();
 
 		const guildId = interaction.guildId;
-		let gameName, tagLine;
-
-		const playerOption = interaction.options.getString('player');
-
-		if (playerOption) {
-			// Parse provided player ID
-			const parts = playerOption.split('#');
-			if (parts.length !== 2) {
-				return await interaction.editReply({
-					content: '❌ Invalid Riot ID format. Use: `PlayerName#TAG`',
-					ephemeral: true
-				});
-			}
-			gameName = parts[0];
-			tagLine = parts[1];
-		} else {
-			// Try to find the requesting user's tracked account
-			const allAccounts = database.getAllTrackedAccounts();
-			const userAccount = allAccounts.find(a => a.guild_id === guildId);
-
-			if (!userAccount) {
-				return await interaction.editReply({
-					content: '❌ Please specify a player: `/profile player:Name#TAG`\nOr register yourself first with `/register`',
-					ephemeral: true
-				});
-			}
-			gameName = userAccount.game_name;
-			tagLine = userAccount.tag_line;
-		}
+		const gameName = interaction.options.getString('gamename');
+		const tagLine = interaction.options.getString('tag');
 
 		try {
 			// Find the tracked account
@@ -50,7 +27,7 @@ module.exports = {
 
 			if (!trackedAccount) {
 				return await interaction.editReply({
-					content: `❌ Player **${gameName}#${tagLine}** is not registered on this server.`,
+					content: `❌ Player **${gameName}#${tagLine}** is not registered on this server.\nUse \`/register\` to add them first.`,
 					ephemeral: true
 				});
 			}
@@ -137,7 +114,7 @@ module.exports = {
 					}
 				)
 				.setTimestamp()
-				.setFooter({ text: `Server ELO System • ${guildId}` });
+				.setFooter({ text: `Server ELO System` });
 
 			await interaction.editReply({ embeds: [embed] });
 		} catch (error) {
