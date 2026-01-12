@@ -53,7 +53,45 @@ class MatchTracker {
 
   async checkAccountMatches(account) {
     try {
-      const matchIds = await this.riotApi.getMatchIdsByPuuid(account.puuid, 1);
+      let matchIds;
+
+      try {
+        matchIds = await this.riotApi.getMatchIdsByPuuid(account.puuid, 1);
+      } catch (error) {
+        // Check if this is a PUUID decryption error (happens when API key changes)
+        if (error.message.includes('Exception decrypting')) {
+          console.log(`[PUUID Refresh] Refreshing PUUID for ${account.game_name}#${account.tag_line}...`);
+
+          try {
+            // Re-fetch account data with new API key
+            const accountData = await this.riotApi.getAccountByRiotId(account.game_name, account.tag_line);
+            const summonerData = await this.riotApi.getSummonerByPuuid(accountData.puuid);
+
+            // Update database with new PUUID
+            this.database.updateAccountPuuid(
+              account.guild_id,
+              account.game_name,
+              account.tag_line,
+              accountData.puuid,
+              summonerData.id
+            );
+
+            console.log(`[PUUID Refresh] Successfully updated PUUID for ${account.game_name}#${account.tag_line}`);
+
+            // Retry with new PUUID
+            matchIds = await this.riotApi.getMatchIdsByPuuid(accountData.puuid, 1);
+
+            // Update account object for rest of this function
+            account.puuid = accountData.puuid;
+            account.summoner_id = summonerData.id;
+          } catch (refreshError) {
+            console.error(`[PUUID Refresh] Failed to refresh PUUID for ${account.game_name}#${account.tag_line}:`, refreshError.message);
+            return;
+          }
+        } else {
+          throw error;
+        }
+      }
 
       if (matchIds.length === 0) {
         return;

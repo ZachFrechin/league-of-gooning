@@ -136,6 +136,15 @@ class DatabaseManager {
     return stmt.run(guildId, gameName, tagLine);
   }
 
+  updateAccountPuuid(guildId, gameName, tagLine, newPuuid, newSummonerId = null) {
+    const stmt = this.db.prepare(`
+      UPDATE tracked_accounts
+      SET puuid = ?, summoner_id = ?
+      WHERE guild_id = ? AND game_name = ? AND tag_line = ?
+    `);
+    return stmt.run(newPuuid, newSummonerId, guildId, gameName, tagLine);
+  }
+
   getTrackedAccounts(guildId) {
     const stmt = this.db.prepare('SELECT * FROM tracked_accounts WHERE guild_id = ?');
     return stmt.all(guildId);
