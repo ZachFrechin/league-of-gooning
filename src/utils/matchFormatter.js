@@ -524,7 +524,13 @@ class MatchFormatter {
       900: '🌟 ARURF',
       1020: '🔥 One for All',
       1300: '🏛️ Nexus Blitz',
-      1400: '🎯 Ultimate Spellbook'
+      1400: '🎯 Ultimate Spellbook',
+      1700: '🏟️ Arena 2v2v2v2',
+      1710: '🏟️ Arena Ranked',
+      1900: '🌙 Pick URF',
+      2000: '🎭 Tutorial',
+      2010: '🎭 Tutorial',
+      2020: '🎭 Tutorial'
     };
     return queueTypes[queueId] || `Queue ${queueId}`;
   }

@@ -12,11 +12,14 @@ RUN apk add --no-cache \
     jpeg-dev \
     giflib-dev \
     librsvg-dev \
-    pixman-dev
+    pixman-dev \
+    fontconfig \
+    font-noto \
+    font-noto-cjk
 
 COPY package*.json ./
 
-RUN npm ci --only=production
+RUN npm install
 
 COPY . .
 

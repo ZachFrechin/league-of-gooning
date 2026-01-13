@@ -1,22 +1,45 @@
-const { createCanvas, loadImage, registerFont } = require('canvas');
-const path = require('path');
+const { createCanvas, loadImage } = require('canvas');
+const axios = require('axios');
 
 class MatchImageGenerator {
-	static DDRAGON_VERSION = '14.24.1';
-	static DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${this.DDRAGON_VERSION}`;
+	static cachedVersion = null;
+	static versionCacheTime = 0;
+
+	/**
+	 * Get the latest DDragon version dynamically
+	 */
+	static async getLatestVersion() {
+		// Cache version for 1 hour
+		if (this.cachedVersion && Date.now() - this.versionCacheTime < 3600000) {
+			return this.cachedVersion;
+		}
+
+		try {
+			const response = await axios.get('https://ddragon.leagueoflegends.com/api/versions.json');
+			this.cachedVersion = response.data[0]; // Latest version is first
+			this.versionCacheTime = Date.now();
+			console.log(`[DDragon] Using version: ${this.cachedVersion}`);
+			return this.cachedVersion;
+		} catch (error) {
+			console.error('Failed to fetch DDragon version:', error.message);
+			return '14.24.1'; // Fallback
+		}
+	}
 
 	/**
 	 * Generate a match summary image
-	 * @param {Object} participant - Player participant data from Riot API
-	 * @param {boolean} win - Whether the player won
-	 * @param {number} score - Performance score (0-100)
-	 * @returns {Buffer} - PNG image buffer
 	 */
 	static async generateMatchImage(participant, win, score) {
-		const width = 400;
-		const height = 200;
+		const version = await this.getLatestVersion();
+		const DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${version}`;
+
+		const width = 450;
+		const height = 220;
 		const canvas = createCanvas(width, height);
 		const ctx = canvas.getContext('2d');
+
+		// Use Noto Sans font (installed in Docker)
+		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
 
 		// Background gradient
 		const gradient = ctx.createLinearGradient(0, 0, width, height);
@@ -37,42 +60,63 @@ class MatchImageGenerator {
 
 		try {
 			// Champion icon (top left)
-			const champUrl = `${this.DDRAGON_BASE}/img/champion/${participant.championName}.png`;
-			const champImg = await loadImage(champUrl);
-			ctx.drawImage(champImg, 15, 15, 80, 80);
+			const champUrl = `${DDRAGON_BASE}/img/champion/${participant.championName}.png`;
+			const champImg = await this.loadImageSafe(champUrl);
+			if (champImg) {
+				ctx.drawImage(champImg, 15, 15, 80, 80);
+			}
 
 			// Champion name
 			ctx.fillStyle = '#ffffff';
-			ctx.font = 'bold 20px Arial';
-			ctx.fillText(participant.championName, 110, 40);
+			ctx.font = `bold 22px ${fontFamily}`;
+			ctx.fillText(participant.championName || 'Unknown', 110, 40);
 
 			// KDA
-			ctx.font = '16px Arial';
+			ctx.font = `18px ${fontFamily}`;
 			ctx.fillStyle = '#cccccc';
-			const kda = `${participant.kills}/${participant.deaths}/${participant.assists}`;
+			const kda = `${participant.kills || 0}/${participant.deaths || 0}/${participant.assists || 0}`;
 			ctx.fillText(kda, 110, 65);
 
 			// Level
-			ctx.font = '14px Arial';
+			ctx.font = `14px ${fontFamily}`;
 			ctx.fillStyle = '#888888';
-			ctx.fillText(`Level ${participant.champLevel}`, 110, 85);
+			ctx.fillText(`Level ${participant.champLevel || 1}`, 110, 88);
+
+			// Win/Loss badge
+			ctx.font = `bold 16px ${fontFamily}`;
+			ctx.fillStyle = win ? '#2ecc71' : '#e74c3c';
+			ctx.fillText(win ? 'VICTORY' : 'DEFEAT', 320, 40);
+
+			// Ensure score is a valid number
+			const scoreNum = Number.isFinite(score) ? Math.round(score) : 0;
+			console.log(`[MatchImage] Score received: ${score}, parsed: ${scoreNum}`);
 
 			// Score bar background
-			ctx.fillStyle = '#333333';
-			ctx.fillRect(15, 110, 370, 20);
+			ctx.fillStyle = '#222222';
+			ctx.fillRect(15, 115, 420, 25);
+
+			// Score bar border
+			ctx.strokeStyle = '#444444';
+			ctx.lineWidth = 1;
+			ctx.strokeRect(15, 115, 420, 25);
 
 			// Score bar fill
-			const scoreWidth = (score / 100) * 370;
-			if (score >= 80) ctx.fillStyle = '#2ecc71';
-			else if (score >= 60) ctx.fillStyle = '#f1c40f';
-			else if (score >= 40) ctx.fillStyle = '#e67e22';
+			const scoreWidth = (scoreNum / 100) * 420;
+			if (scoreNum >= 80) ctx.fillStyle = '#2ecc71';
+			else if (scoreNum >= 60) ctx.fillStyle = '#f1c40f';
+			else if (scoreNum >= 40) ctx.fillStyle = '#e67e22';
 			else ctx.fillStyle = '#e74c3c';
-			ctx.fillRect(15, 110, scoreWidth, 20);
+
+			if (scoreWidth > 0) {
+				ctx.fillRect(15, 115, scoreWidth, 25);
+			}
 
 			// Score text
 			ctx.fillStyle = '#ffffff';
-			ctx.font = 'bold 14px Arial';
-			ctx.fillText(`${score}/100`, 175, 125);
+			ctx.font = `bold 14px ${fontFamily}`;
+			ctx.textAlign = 'center';
+			ctx.fillText(`${scoreNum}/100 Performance`, 225, 133);
+			ctx.textAlign = 'left';
 
 			// Items row (bottom)
 			const items = [
@@ -81,50 +125,61 @@ class MatchImageGenerator {
 			];
 
 			let itemX = 15;
+			const itemSize = 50;
+			const itemSpacing = 55;
+
 			for (const itemId of items) {
-				if (itemId > 0) {
-					try {
-						const itemUrl = `${this.DDRAGON_BASE}/img/item/${itemId}.png`;
-						const itemImg = await loadImage(itemUrl);
-						ctx.drawImage(itemImg, itemX, 145, 45, 45);
-					} catch (e) {
-						// Draw placeholder if item image fails
-						ctx.fillStyle = '#444444';
-						ctx.fillRect(itemX, 145, 45, 45);
+				if (itemId && itemId > 0) {
+					const itemUrl = `${DDRAGON_BASE}/img/item/${itemId}.png`;
+					const itemImg = await this.loadImageSafe(itemUrl);
+					if (itemImg) {
+						ctx.drawImage(itemImg, itemX, 155, itemSize, itemSize);
+					} else {
+						this.drawEmptySlot(ctx, itemX, 155, itemSize);
 					}
 				} else {
-					// Empty slot
-					ctx.fillStyle = '#222222';
-					ctx.fillRect(itemX, 145, 45, 45);
-					ctx.strokeStyle = '#444444';
-					ctx.strokeRect(itemX, 145, 45, 45);
+					this.drawEmptySlot(ctx, itemX, 155, itemSize);
 				}
-				itemX += 50;
+				itemX += itemSpacing;
 			}
 
-			// Trinket
-			if (participant.item6 > 0) {
-				try {
-					const trinketUrl = `${this.DDRAGON_BASE}/img/item/${participant.item6}.png`;
-					const trinketImg = await loadImage(trinketUrl);
-					ctx.drawImage(trinketImg, itemX + 20, 145, 45, 45);
-				} catch (e) {
-					ctx.fillStyle = '#444444';
-					ctx.fillRect(itemX + 20, 145, 45, 45);
+			// Trinket (last slot, slightly separated)
+			const trinketId = participant.item6;
+			if (trinketId && trinketId > 0) {
+				const trinketUrl = `${DDRAGON_BASE}/img/item/${trinketId}.png`;
+				const trinketImg = await this.loadImageSafe(trinketUrl);
+				if (trinketImg) {
+					ctx.drawImage(trinketImg, itemX + 20, 155, itemSize, itemSize);
+				} else {
+					this.drawEmptySlot(ctx, itemX + 20, 155, itemSize);
 				}
 			}
 
 		} catch (error) {
-			console.error('Error loading images:', error.message);
-			// Fallback: just show text
+			console.error('Error generating image:', error.message);
 			ctx.fillStyle = '#ffffff';
-			ctx.font = 'bold 24px Arial';
-			ctx.fillText(participant.championName, 50, 80);
-			ctx.font = '18px Arial';
-			ctx.fillText(`${participant.kills}/${participant.deaths}/${participant.assists}`, 50, 110);
+			ctx.font = 'bold 24px sans-serif';
+			ctx.fillText(participant.championName || 'Unknown', 50, 80);
 		}
 
 		return canvas.toBuffer('image/png');
+	}
+
+	static async loadImageSafe(url) {
+		try {
+			return await loadImage(url);
+		} catch (error) {
+			console.warn(`Failed to load image: ${url}`);
+			return null;
+		}
+	}
+
+	static drawEmptySlot(ctx, x, y, size) {
+		ctx.fillStyle = '#1a1a1a';
+		ctx.fillRect(x, y, size, size);
+		ctx.strokeStyle = '#333333';
+		ctx.lineWidth = 1;
+		ctx.strokeRect(x, y, size, size);
 	}
 }
 
