@@ -13,8 +13,9 @@ class MatchFormatter {
     const { kills, deaths, assists, totalMinionsKilled, neutralMinionsKilled, visionScore, totalDamageDealtToChampions, goldEarned, teamPosition } = stats;
     const gameMinutes = gameDuration / 60;
 
-    // Determine if Support (UTILITY)
+    // Determine roles
     const isSupport = teamPosition === 'UTILITY';
+    const isJungle = teamPosition === 'JUNGLE';
 
     // Helper: Get Team Stats
     let teamDamage = 0;
@@ -37,14 +38,11 @@ class MatchFormatter {
     }
 
     if (isSupport) {
-      // ==========================================
-      // SUPPORT SCORING (UTILITY)
-      // ==========================================
-
-      // 1. VISION (Max 40 pts) - Primary Stat (STRICT)
+      // ... (existing support logic) ...
+      // 1. VISION (Max 40 pts)
       const visionPerMin = visionScore / gameMinutes;
       let visionScoreCalc = 0;
-      if (visionPerMin >= 3.0) visionScoreCalc = 40;       // Very high bar
+      if (visionPerMin >= 3.0) visionScoreCalc = 40;
       else if (visionPerMin >= 2.5) visionScoreCalc = 35;
       else if (visionPerMin >= 2.2) visionScoreCalc = 30;
       else if (visionPerMin >= 2.0) visionScoreCalc = 25;
@@ -55,36 +53,89 @@ class MatchFormatter {
       score += visionScoreCalc;
 
       // 2. COMBAT (Max 50 pts)
-      // KP Component (30 pts max)
       let kp = teamKills > 0 ? (kills + assists) / teamKills : (stats.challenges?.killParticipation || 0);
       let kpScore = 0;
-      if (kp >= 0.60) kpScore = 30; // 60% KP = Max
+      if (kp >= 0.60) kpScore = 30;
       else if (kp >= 0.50) kpScore = 25;
       else if (kp >= 0.40) kpScore = 20;
       else if (kp >= 0.30) kpScore = 15;
       else if (kp >= 0.20) kpScore = 10;
       score += kpScore;
 
-      // Survival/Assists (20 pts max)
-      // Ratio: (Assists + 1) / (Deaths + 1) to avoid div by 0 and reward low deaths
       const survivalRatio = (assists + 1) / (deaths + 1);
       let survivalScore = 0;
-      if (deaths === 0) survivalScore = 20; // Perfect survival
+      if (deaths === 0) survivalScore = 20;
       else if (survivalRatio >= 4.0) survivalScore = 20;
       else if (survivalRatio >= 3.0) survivalScore = 15;
       else if (survivalRatio >= 2.0) survivalScore = 10;
       else if (survivalRatio >= 1.0) survivalScore = 5;
       score += survivalScore;
 
-      // 3. UTILITY/ACTIVITY (Max 10 pts)
-      // Base poke/presence check
+      // 3. UTILITY (Max 10 pts)
       const dpm = (totalDamageDealtToChampions || 0) / gameMinutes;
       if (dpm >= 200) score += 10;
       else score += 5;
 
+    } else if (isJungle) {
+      // ==========================================
+      // JUNGLE SCORING
+      // ==========================================
+
+      // 1. COMBAT & PRESENCE (Max 45 pts) - Higher KP weight
+      // KP (25 pts) - Junglers need to be active
+      let kp = teamKills > 0 ? (kills + assists) / teamKills : (stats.challenges?.killParticipation || 0);
+      let kpScore = 0;
+      if (kp >= 0.70) kpScore = 25;
+      else if (kp >= 0.60) kpScore = 22; // Boosted KP thresholds
+      else if (kp >= 0.50) kpScore = 18;
+      else if (kp >= 0.40) kpScore = 12;
+      else if (kp >= 0.30) kpScore = 6;
+      score += kpScore;
+
+      // KDA (20 pts)
+      const kda = deaths === 0 ? (kills + assists) : (kills + assists) / deaths;
+      let kdaScore = 0;
+      if (deaths === 0 && (kills + assists) >= 5) kdaScore = 20;
+      else if (kda >= 4.0) kdaScore = 20;
+      else if (kda >= 3.0) kdaScore = 15;
+      else if (kda >= 2.0) kdaScore = 10;
+      else if (kda >= 1.0) kdaScore = 5;
+      score += kdaScore;
+
+      // 2. OBJECTIVES & FARM (Max 30 pts)
+      // CS/min (20 pts) - Lower/different yield than laners
+      const totalCS = totalMinionsKilled + neutralMinionsKilled;
+      const csPerMin = totalCS / gameMinutes;
+      let csScore = 0;
+      if (csPerMin >= 7.0) csScore = 20;      // Harder to reach high CS in jgl
+      else if (csPerMin >= 6.0) csScore = 18;
+      else if (csPerMin >= 5.0) csScore = 15;
+      else if (csPerMin >= 4.0) csScore = 10;
+      else if (csPerMin >= 3.0) csScore = 5;
+      score += csScore;
+
+      // Objective Damage / Control (10 pts) - approximated by total damage/objectives taken if available
+      // Using generic damage or gold rank relative to team
+      let objScore = 0;
+      const goldShare = teamGold > 0 ? goldEarned / teamGold : 0;
+      if (goldEarned >= maxTeamGold * 0.9) objScore = 10; // Top earner
+      else if (goldEarned >= maxTeamGold * 0.8) objScore = 7;
+      else objScore = 5;
+      score += objScore;
+
+      // 3. DAMAGE (Max 25 pts)
+      const dpm = (totalDamageDealtToChampions || 0) / gameMinutes;
+      let dmgScore = 0;
+      if (dpm >= 600) dmgScore = 25;
+      else if (dpm >= 450) dmgScore = 20;
+      else if (dpm >= 300) dmgScore = 15;
+      else if (dpm >= 150) dmgScore = 10;
+      else dmgScore = 5;
+      score += dmgScore;
+
     } else {
       // ==========================================
-      // STANDARD SCORING (CARRY / TANK / ETC)
+      // STANDARD SCORING (LANERS)
       // ==========================================
 
       // 1. COMBAT (Max 35 pts)
@@ -110,10 +161,10 @@ class MatchFormatter {
       score += kpScore;
 
       // 2. DAMAGE (Max 30 pts)
-      // Absolute DPM
+      // ... (DPM score logic)
       const dpm = (totalDamageDealtToChampions || 0) / gameMinutes;
       let damageScoreAbs = 0;
-      if (dpm >= 1000) damageScoreAbs = 25; // Base cap 25
+      if (dpm >= 1000) damageScoreAbs = 25;
       else if (dpm >= 800) damageScoreAbs = 20;
       else if (dpm >= 600) damageScoreAbs = 15;
       else if (dpm >= 400) damageScoreAbs = 10;
@@ -131,21 +182,20 @@ class MatchFormatter {
       }
 
       let finalDamageScore = Math.max(damageScoreAbs, damageScoreRel);
-      // Leader Bonus (+5)
       if (finalDamageScore > 0 && totalDamageDealtToChampions >= maxTeamDamage) finalDamageScore += 5;
       score += Math.min(30, finalDamageScore);
 
-      // 3. FARMING & GOLD (Max 30 pts) - CS REQUIREMENT
-      // Absolute CS/min - 8 CS/min = perfect score
+      // 3. FARMING & GOLD (Max 35 pts)
       const totalCS = totalMinionsKilled + neutralMinionsKilled;
       const csPerMin = totalCS / gameMinutes;
       let csScoreAbs = 0;
-      if (csPerMin >= 8) csScoreAbs = 30;      // 8/min -> 30 pts (Perfect)
-      else if (csPerMin >= 7) csScoreAbs = 25;
+      if (csPerMin >= 8) csScoreAbs = 35; // Increased weight for laners
+      else if (csPerMin >= 7) csScoreAbs = 30;
       else if (csPerMin >= 6) csScoreAbs = 20;
       else if (csPerMin >= 5) csScoreAbs = 15;
       else if (csPerMin >= 4) csScoreAbs = 10;
       else if (csPerMin >= 3) csScoreAbs = 5;
+
 
       // Relative Gold Bonus (Safety net, but capped at 20)
       let goldScoreRel = 0;
@@ -452,23 +502,16 @@ class MatchFormatter {
       return { ...p, shameScore };
     });
 
-    const winningTeam = scoredParticipants.filter(p => p.win);
-    const losingTeam = scoredParticipants.filter(p => !p.win);
+    // Feature "Pute de la game" (Worst Player of the match)
+    // Find absolute worst player across both teams based on shame score
+    const worstPlayer = scoredParticipants.reduce((min, p) => p.shameScore < min.shameScore ? p : min, scoredParticipants[0]);
 
-    if (winningTeam.length > 0 && losingTeam.length > 0) {
-      const worstWinner = winningTeam.reduce((min, p) => p.shameScore < min.shameScore ? p : min, winningTeam[0]);
-      const worstLoser = losingTeam.reduce((min, p) => p.shameScore < min.shameScore ? p : min, losingTeam[0]);
-
+    if (worstPlayer) {
       embed.addFields(
         {
-          name: '🤡 Pute Win',
-          value: `\`\`\`\n${worstWinner.championName}\n${worstWinner.kills}/${worstWinner.deaths}/${worstWinner.assists}\n\`\`\``,
-          inline: true
-        },
-        {
-          name: '🤡 Pute Lose',
-          value: `\`\`\`\n${worstLoser.championName}\n${worstLoser.kills}/${worstLoser.deaths}/${worstLoser.assists}\n\`\`\``,
-          inline: true
+          name: '🤡 Pute de la Game',
+          value: `\`\`\`\n${worstPlayer.championName} (${worstPlayer.win ? 'Win' : 'Loss'})\n${worstPlayer.kills}/${worstPlayer.deaths}/${worstPlayer.assists}\n\`\`\``,
+          inline: false // Full width for prominence
         }
       );
     }
