@@ -2,7 +2,17 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Build tools for native modules
 RUN apk add --no-cache python3 make g++
+
+# Canvas (node-canvas) dependencies for image generation
+RUN apk add --no-cache \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev \
+    pixman-dev
 
 COPY package*.json ./
 
