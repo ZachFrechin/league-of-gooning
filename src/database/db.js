@@ -104,7 +104,8 @@ class DatabaseManager {
       { name: 'total_vision', def: 'INTEGER DEFAULT 0' },
       { name: 'total_deaths', def: 'INTEGER DEFAULT 0' },
       { name: 'total_assists', def: 'INTEGER DEFAULT 0' },
-      { name: 'peak_elo', def: 'INTEGER DEFAULT 1000' }
+      { name: 'peak_elo', def: 'INTEGER DEFAULT 1000' },
+      { name: 'stats_matches', def: 'INTEGER DEFAULT 0' }
     ];
 
     for (const col of newColumns) {
@@ -219,9 +220,9 @@ class DatabaseManager {
         INSERT INTO player_elo (
           guild_id, puuid, elo, matches_played, wins, losses, 
           total_kills, total_score, current_streak, best_win_streak, worst_lose_streak,
-          total_damage, total_cs, total_vision, total_deaths, total_assists, peak_elo, updated_at
+          total_damage, total_cs, total_vision, total_deaths, total_assists, peak_elo, stats_matches, updated_at
         )
-        VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))
       `);
       return stmt.run(
         guildId, puuid, newElo,
@@ -265,6 +266,7 @@ class DatabaseManager {
             total_deaths = total_deaths + ?,
             total_assists = total_assists + ?,
             peak_elo = ?,
+            stats_matches = stats_matches + 1,
             updated_at = datetime('now')
         WHERE guild_id = ? AND puuid = ?
       `);

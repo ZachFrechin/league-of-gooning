@@ -196,9 +196,9 @@ class MatchImageGenerator {
 				ctx.font = `11px ${fontFamily}`;
 				ctx.fillText(`${p.kills}/${p.deaths}/${p.assists}`, 55, rowY + 18);
 
-				// Mini items (4 main items only for space)
+				// Mini items (7 items incl. trinket)
 				let miniX = 110;
-				for (let j = 0; j < 4; j++) {
+				for (let j = 0; j < 7; j++) {
 					const itemId = p[`item${j}`];
 					if (itemId && itemId > 0) {
 						const iImg = await this.loadImageCached(`${DDRAGON_BASE}/img/item/${itemId}.png`);
@@ -221,9 +221,9 @@ class MatchImageGenerator {
 				ctx.font = `11px ${fontFamily}`;
 				ctx.fillText(`${p.kills}/${p.deaths}/${p.assists}`, 325, rowY + 18);
 
-				// Mini items
+				// Mini items (7 items incl. trinket)
 				let miniX = 380;
-				for (let j = 0; j < 4; j++) {
+				for (let j = 0; j < 7; j++) {
 					const itemId = p[`item${j}`];
 					if (itemId && itemId > 0) {
 						const iImg = await this.loadImageCached(`${DDRAGON_BASE}/img/item/${itemId}.png`);

@@ -43,14 +43,23 @@ module.exports = {
 			}
 
 			// Calculate averages
+			// Calculate averages
 			const matches = playerElo.matches_played || 1;
-			const avgScore = Math.round((playerElo.total_score || 0) / matches);
-			const avgKills = ((playerElo.total_kills || 0) / matches).toFixed(1);
-			const avgDeaths = ((playerElo.total_deaths || 0) / matches).toFixed(1);
-			const avgAssists = ((playerElo.total_assists || 0) / matches).toFixed(1);
-			const avgDamage = Math.round((playerElo.total_damage || 0) / matches);
-			const avgCS = Math.round((playerElo.total_cs || 0) / matches);
-			const avgVision = ((playerElo.total_vision || 0) / matches).toFixed(1);
+			// Use stats_matches if available (for stats added later), otherwise fallback to matches (legacy support)
+			// But for legacy data (stats_matches=0), stats columns are likely 0 too, so it's safer to use stats_matches > 0 ? stats_matches : 1 (if total stats > 0)
+			// To be safe: use stats_matches if > 0, otherwise if totals are > 0 use matches, else 1
+			const statsDivisor = (playerElo.stats_matches && playerElo.stats_matches > 0) ? playerElo.stats_matches : matches;
+
+			const avgScore = Math.round((playerElo.total_score || 0) / matches); // Score was always tracked
+			const avgKills = ((playerElo.total_kills || 0) / matches).toFixed(1); // Kills always tracked
+			const avgDeaths = ((playerElo.total_deaths || 0) / matches).toFixed(1); // Deaths always tracked
+			const avgAssists = ((playerElo.total_assists || 0) / matches).toFixed(1); // Assists always tracked
+
+			// New stats use specific divisor
+			const avgDamage = Math.round((playerElo.total_damage || 0) / statsDivisor);
+			const avgCS = Math.round((playerElo.total_cs || 0) / statsDivisor);
+			const avgVision = ((playerElo.total_vision || 0) / statsDivisor).toFixed(1);
+
 			const winRate = ((playerElo.wins || 0) / matches * 100).toFixed(1);
 
 			const eloRank = EloCalculator.getEloRank(playerElo.elo);
