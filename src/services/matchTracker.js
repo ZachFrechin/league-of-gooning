@@ -175,7 +175,7 @@ class MatchTracker {
       // Get updated ELO for display
       const playerElo = this.database.getPlayerElo(account.guild_id, account.puuid);
 
-      const message = MatchFormatter.formatMatchResult(
+      const message = await MatchFormatter.formatMatchResult(
         matchData,
         playerStats,
         account.game_name,
@@ -186,7 +186,10 @@ class MatchTracker {
         playerElo?.current_streak || 0  // Pass streak
       );
 
-      await channel.send(message);
+      await channel.send({
+        embeds: message.embeds,
+        files: message.files || []
+      });
 
       this.database.markMatchProcessed(account.guild_id, latestMatchId, account.puuid);
       this.database.updateLastMatchId(account.guild_id, account.puuid, latestMatchId);

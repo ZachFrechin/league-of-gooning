@@ -317,9 +317,11 @@ class MatchFormatter {
     return `${emoji} ${rank.tier} ${rank.rank} - ${rank.leaguePoints} LP`;
   }
 
-  static formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null, eloChange = 0, currentElo = 1000, currentStreak = 0) {
+  static async formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null, eloChange = 0, currentElo = 1000, currentStreak = 0) {
     const { participant, gameDuration, isRemake, gameMode, queueId } = playerStats;
     const allParticipants = matchData.info.participants;
+    const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+    const MatchImageGenerator = require('./matchImageGenerator');
 
     if (isRemake) {
       const embed = new EmbedBuilder()
@@ -327,17 +329,15 @@ class MatchFormatter {
         .setTitle(`🔄 Remake - ${gameName}#${tagLine}`)
         .setDescription(`**${participant.championName}** - Game was remade`)
         .setTimestamp(matchData.info.gameEndTimestamp);
-      return { embeds: [embed] };
+      return { embeds: [embed], files: [] };
     }
 
     const score = this.calculateScore(participant, gameDuration, isRemake, allParticipants);
     const color = participant.win ? '#3498db' : '#e74c3c';
     const result = participant.win ? '🏆 VICTORY' : '💀 DEFEAT';
+    const queueType = this.getQueueType(queueId);
 
-    const kda = participant.deaths === 0
-      ? `${participant.kills} / ${participant.deaths} / ${participant.assists}`
-      : `${participant.kills} / ${participant.deaths} / ${participant.assists}`;
-
+    const kda = `${participant.kills}/${participant.deaths}/${participant.assists}`;
     const kdaRatio = participant.deaths === 0
       ? (participant.kills + participant.assists).toFixed(2)
       : ((participant.kills + participant.assists) / participant.deaths).toFixed(2);
@@ -351,34 +351,44 @@ class MatchFormatter {
       ? `${(participant.challenges.killParticipation * 100).toFixed(1)}%`
       : 'N/A';
 
-    const queueType = this.getQueueType(queueId);
-    const duration = this.formatDuration(gameDuration);
+    const championIconUrl = this.getChampionIconUrl(participant.championName);
 
+    // Get teams for image
     const playerTeam = allParticipants.filter(p => p.teamId === participant.teamId);
     const enemyTeam = allParticipants.filter(p => p.teamId !== participant.teamId);
 
-    const teamComposition = this.formatTeamComposition(playerTeam, participant.puuid);
-    const enemyComposition = this.formatTeamComposition(enemyTeam, participant.puuid);
-
-    const scoreBar = this.generateScoreBar(score);
-    const championIconUrl = this.getChampionIconUrl(participant.championName);
-    const rankDisplay = this.formatRank(rankedInfo, queueId);
-
-    let description = `**${participant.championName}** • Level ${participant.champLevel} • ${duration}`;
-    if (rankDisplay) {
-      description += `\n${rankDisplay}`;
+    // Generate image
+    let files = [];
+    try {
+      const imageBuffer = await MatchImageGenerator.generateFullMatchImage(
+        participant, participant.win, score, playerTeam, enemyTeam
+      );
+      files.push(new AttachmentBuilder(imageBuffer, { name: 'match-summary.png' }));
+    } catch (err) {
+      console.error('[MatchFormatter] Failed to generate image:', err.message);
     }
 
-    // Add ELO info
+    // Build description with riot rank, our ELO, and streak
     const EloCalculator = require('./eloCalculator');
     const eloRank = EloCalculator.getEloRank(currentElo);
     const eloChangeDisplay = eloChange > 0 ? `+${eloChange}` : `${eloChange}`;
-    description += `\n${eloRank.name}: ${currentElo} ELO (${eloChangeDisplay})`;
 
-    // Add streak message
+    let descriptionLines = [];
+
+    // Riot rank display
+    if (rankedInfo && rankedInfo.tier) {
+      const riotRankText = `🎖️ **${rankedInfo.tier} ${rankedInfo.rank}** - ${rankedInfo.leaguePoints} LP`;
+      descriptionLines.push(riotRankText);
+    }
+
+    // Our ELO system
+    descriptionLines.push(`${eloRank.name}: **${currentElo} ELO** (${eloChangeDisplay})`);
+
+    // Streak message
     const streakMessage = this.getStreakMessage(currentStreak);
     if (streakMessage) {
-      description += `\n\n${streakMessage}`;
+      descriptionLines.push('');
+      descriptionLines.push(streakMessage);
     }
 
     const embed = new EmbedBuilder()
@@ -388,101 +398,76 @@ class MatchFormatter {
         iconURL: championIconUrl
       })
       .setTitle(`${result} - ${queueType}`)
-      .setThumbnail(championIconUrl)
-      .setDescription(description)
-      .addFields(
-        {
-          name: '📊 PERFORMANCE SCORE',
-          value: `${scoreBar}\n**${score}/100 Points**`,
-          inline: false
-        },
-        {
-          name: '\u200b',
-          value: '**═══════════ YOUR STATS ═══════════**',
-          inline: false
-        },
-        {
-          name: '⚔️ KDA',
-          value: `\`\`\`\n${kda}\nRatio: ${kdaRatio}\n\`\`\``,
-          inline: true
-        },
-        {
-          name: '🎯 Kill Participation',
-          value: `\`\`\`\n${killParticipation}\nof Team Kills\n\`\`\``,
-          inline: true
-        },
-        {
-          name: '🗡️ Creep Score',
-          value: `\`\`\`\n${totalCS} CS\n${csPerMin}/min\n\`\`\``,
-          inline: true
-        },
-        {
-          name: '💥 Damage',
-          value: `\`\`\`\n${(participant.totalDamageDealtToChampions || 0).toLocaleString()}\n${damagePerMin}/min\n\`\`\``,
-          inline: true
-        },
-        {
-          name: '👁️ Vision Score',
-          value: `\`\`\`\n${participant.visionScore || 0}\n${visionPerMin}/min\n\`\`\``,
-          inline: true
-        },
-        {
-          name: '💰 Gold',
-          value: `\`\`\`\n${(participant.goldEarned || 0).toLocaleString()}\nTotal Earned\n\`\`\``,
-          inline: true
-        },
-        {
-          name: '🎒 Items',
-          value: this.formatItems(participant) || 'No items',
-          inline: false
-        },
-        {
-          name: '\u200b',
-          value: '**═══════════ TEAM COMPOSITIONS ═══════════**',
-          inline: false
-        },
-        {
-          name: participant.win ? '🔵 Allied Team (Victory)' : '🔵 Allied Team (Defeat)',
-          value: `\`\`\`\n${teamComposition}\n\`\`\``,
-          inline: true
-        },
-        {
-          name: participant.win ? '🔴 Enemy Team (Defeat)' : '🔴 Enemy Team (Victory)',
-          value: `\`\`\`\n${enemyComposition}\n\`\`\``,
-          inline: true
-        }
-      );
+      .setDescription(descriptionLines.join('\n'));
 
-    // Feature "Pute de la game" (Worst Player)
-    // Use a separate "shame score" that heavily penalizes deaths
+    // Big score at top
+    embed.addFields({
+      name: '📊 PERFORMANCE',
+      value: `# ${score}`,
+      inline: false
+    });
+
+    // Stats boxes (same size with 2 lines each)
+    embed.addFields(
+      {
+        name: '⚔️ KDA',
+        value: `\`\`\`\n${kda}\nRatio: ${kdaRatio}\n\`\`\``,
+        inline: true
+      },
+      {
+        name: '🎯 Kill Part.',
+        value: `\`\`\`\n${killParticipation}\n \n\`\`\``,
+        inline: true
+      },
+      {
+        name: '💥 Damage',
+        value: `\`\`\`\n${(participant.totalDamageDealtToChampions || 0).toLocaleString()}\n${damagePerMin}/min\n\`\`\``,
+        inline: true
+      },
+      {
+        name: '🗡️ Farm',
+        value: `\`\`\`\n${totalCS} CS\n${csPerMin}/min\n\`\`\``,
+        inline: true
+      },
+      {
+        name: '👁️ Vision',
+        value: `\`\`\`\n${participant.visionScore}\n${visionPerMin}/min\n\`\`\``,
+        inline: true
+      },
+      {
+        name: '💰 Gold',
+        value: `\`\`\`\n${(participant.goldEarned || 0).toLocaleString()}\n \n\`\`\``,
+        inline: true
+      }
+    );
+
+    // Image
+    if (files.length > 0) {
+      embed.setImage('attachment://match-summary.png');
+    }
+
+    // Worst players ("Pute de la game")
     const scoredParticipants = allParticipants.map(p => {
-      const pScore = this.calculateScore(p, gameDuration, isRemake, allParticipants);
       const shameScore = this.calculateShameScore(p, gameDuration);
-      return { ...p, score: pScore, shameScore: shameScore };
+      return { ...p, shameScore };
     });
 
     const winningTeam = scoredParticipants.filter(p => p.win);
     const losingTeam = scoredParticipants.filter(p => !p.win);
 
-    // Find worst by SHAME score (death-heavy), not performance score
-    const worstWinner = winningTeam.reduce((min, p) => p.shameScore < min.shameScore ? p : min, winningTeam[0]);
-    const worstLoser = losingTeam.reduce((min, p) => p.shameScore < min.shameScore ? p : min, losingTeam[0]);
+    if (winningTeam.length > 0 && losingTeam.length > 0) {
+      const worstWinner = winningTeam.reduce((min, p) => p.shameScore < min.shameScore ? p : min, winningTeam[0]);
+      const worstLoser = losingTeam.reduce((min, p) => p.shameScore < min.shameScore ? p : min, losingTeam[0]);
 
-    if (worstWinner && worstLoser) {
       embed.addFields(
         {
-          name: '\u200b',
-          value: '**═══════════ CLOWNS OF THE GAME ═══════════**',
-          inline: false
-        },
-        {
-          name: '🤡 Pute de la game Win Team',
-          value: `\`\`\`\n${worstWinner.championName} (${worstWinner.riotIdGameName || worstWinner.summonerName})\n${worstWinner.kills}/${worstWinner.deaths}/${worstWinner.assists}\n\`\`\``,
+          name: '🤡 Pute Win',
+          value: `\`\`\`\n${worstWinner.championName}\n${worstWinner.kills}/${worstWinner.deaths}/${worstWinner.assists}\n\`\`\``,
           inline: true
         },
         {
-          name: '🤡 Pute de la game Lose Team',
-          value: `\`\`\`\n${worstLoser.championName} (${worstLoser.riotIdGameName || worstLoser.summonerName})\n${worstLoser.kills}/${worstLoser.deaths}/${worstLoser.assists}\n\`\`\``,
+          name: '🤡 Pute Lose',
+          value: `\`\`\`\n${worstLoser.championName}\n${worstLoser.kills}/${worstLoser.deaths}/${worstLoser.assists}\n\`\`\``,
           inline: true
         }
       );
@@ -491,11 +476,10 @@ class MatchFormatter {
     embed
       .setTimestamp(matchData.info.gameEndTimestamp)
       .setFooter({
-        text: `Match ID: ${matchData.metadata.matchId}`,
-        iconURL: 'https://static.wikia.nocookie.net/leagueoflegends/images/1/12/League_of_Legends_icon.png'
+        text: `Match ID: ${matchData.metadata.matchId}`
       });
 
-    return { embeds: [embed] };
+    return { embeds: [embed], files };
   }
 
   static generateScoreBar(score) {
