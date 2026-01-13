@@ -5,7 +5,7 @@ const MatchImageGenerator = require('../utils/matchImageGenerator');
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('match')
-		.setDescription('[BETA] Display details of a specific match with generated image')
+		.setDescription('[BETA] Display details of a specific match with generated images')
 		.addStringOption(option =>
 			option.setName('matchid')
 				.setDescription('Match ID (e.g., EUW1_1234567890)')
@@ -53,17 +53,7 @@ module.exports = {
 				allParticipants
 			);
 
-			// Generate match image (BETA feature)
-			let attachment = null;
-			try {
-				const imageBuffer = await MatchImageGenerator.generateMatchImage(participant, participant.win, score);
-				attachment = new AttachmentBuilder(imageBuffer, { name: 'match-summary.png' });
-			} catch (imgError) {
-				console.error('Failed to generate match image:', imgError.message);
-				// Continue without image
-			}
-
-			// Build the embed
+			// Prepare data
 			const color = participant.win ? '#3498db' : '#e74c3c';
 			const result = participant.win ? '🏆 VICTORY' : '💀 DEFEAT';
 			const duration = MatchFormatter.formatDuration(playerStats.gameDuration);
@@ -76,7 +66,41 @@ module.exports = {
 
 			const totalCS = participant.totalMinionsKilled + participant.neutralMinionsKilled;
 			const csPerMin = (totalCS / (playerStats.gameDuration / 60)).toFixed(1);
+			const visionPerMin = (participant.visionScore / (playerStats.gameDuration / 60)).toFixed(1);
 			const damagePerMin = Math.round(participant.totalDamageDealtToChampions / (playerStats.gameDuration / 60));
+
+			const killParticipation = participant.challenges?.killParticipation
+				? `${(participant.challenges.killParticipation * 100).toFixed(1)}%`
+				: 'N/A';
+
+			// Generate images
+			const files = [];
+
+			// 1. Player Match Image
+			try {
+				const matchImageBuffer = await MatchImageGenerator.generateMatchImage(participant, participant.win, score);
+				files.push(new AttachmentBuilder(matchImageBuffer, { name: 'match-player.png' }));
+			} catch (imgErr) {
+				console.error('Failed to generate match image:', imgErr.message);
+			}
+
+			// 2. Team Images
+			const playerTeam = allParticipants.filter(p => p.teamId === participant.teamId);
+			const enemyTeam = allParticipants.filter(p => p.teamId !== participant.teamId);
+
+			try {
+				const allyImageBuffer = await MatchImageGenerator.generateTeamImage(playerTeam, participant.win, participant.puuid);
+				files.push(new AttachmentBuilder(allyImageBuffer, { name: 'team-ally.png' }));
+			} catch (imgErr) {
+				console.error('Failed to generate ally team image:', imgErr.message);
+			}
+
+			try {
+				const enemyImageBuffer = await MatchImageGenerator.generateTeamImage(enemyTeam, !participant.win, null);
+				files.push(new AttachmentBuilder(enemyImageBuffer, { name: 'team-enemy.png' }));
+			} catch (imgErr) {
+				console.error('Failed to generate enemy team image:', imgErr.message);
+			}
 
 			// Build embed
 			const embed = new EmbedBuilder()
@@ -92,17 +116,16 @@ module.exports = {
 					`⚠️ *BETA - No ELO changes applied*`
 				);
 
-			// If image was generated, use it as the main image
-			if (attachment) {
-				embed.setImage('attachment://match-summary.png');
-			} else {
-				embed.setThumbnail(MatchFormatter.getChampionIconUrl(participant.championName));
+			// Use player image as main image if generated
+			if (files.length > 0) {
+				embed.setImage('attachment://match-player.png');
 			}
 
+			// Stats fields (same as auto match recaps)
 			embed.addFields(
 				{
-					name: '📊 Performance Score',
-					value: `**${score}/100 Points**`,
+					name: '\u200b',
+					value: '**═══════════ YOUR STATS ═══════════**',
 					inline: false
 				},
 				{
@@ -111,52 +134,47 @@ module.exports = {
 					inline: true
 				},
 				{
-					name: '💰 Farm',
-					value: `\`\`\`\n${totalCS} CS\n${csPerMin}/min\n\`\`\``,
+					name: '🎯 Kill Participation',
+					value: `\`\`\`\n${killParticipation}\n\`\`\``,
 					inline: true
 				},
 				{
 					name: '💥 Damage',
-					value: `\`\`\`\n${participant.totalDamageDealtToChampions.toLocaleString()}\n${damagePerMin}/min\n\`\`\``,
+					value: `\`\`\`\n${(participant.totalDamageDealtToChampions || 0).toLocaleString()}\n${damagePerMin}/min\n\`\`\``,
+					inline: true
+				},
+				{
+					name: '🗡️ Farm (CS)',
+					value: `\`\`\`\n${totalCS} CS\n${csPerMin}/min\n\`\`\``,
+					inline: true
+				},
+				{
+					name: '👁️ Vision',
+					value: `\`\`\`\n${participant.visionScore}\n${visionPerMin}/min\n\`\`\``,
+					inline: true
+				},
+				{
+					name: '💰 Gold',
+					value: `\`\`\`\n${(participant.goldEarned || 0).toLocaleString()}\n\`\`\``,
 					inline: true
 				}
 			);
 
-			// Add team compositions
-			const playerTeam = allParticipants.filter(p => p.teamId === participant.teamId);
-			const enemyTeam = allParticipants.filter(p => p.teamId !== participant.teamId);
-
-			const teamComposition = MatchFormatter.formatTeamComposition(playerTeam, participant.puuid);
-			const enemyComposition = MatchFormatter.formatTeamComposition(enemyTeam, participant.puuid);
-
-			embed.addFields(
-				{
-					name: '\u200b',
-					value: '**═══════════ TEAMS ═══════════**',
-					inline: false
-				},
-				{
-					name: participant.win ? '🔵 Your Team (Victory)' : '🔵 Your Team (Defeat)',
-					value: `\`\`\`\n${teamComposition}\n\`\`\``,
-					inline: true
-				},
-				{
-					name: participant.win ? '🔴 Enemy Team (Defeat)' : '🔴 Enemy Team (Victory)',
-					value: `\`\`\`\n${enemyComposition}\n\`\`\``,
-					inline: true
-				}
-			);
+			// Team composition section (using images)
+			embed.addFields({
+				name: '\u200b',
+				value: '**═══════════ TEAM COMPOSITIONS ═══════════**\n*See attached images below*',
+				inline: false
+			});
 
 			embed.setTimestamp(matchData.info.gameEndTimestamp)
 				.setFooter({ text: 'BETA Command - Generated with node-canvas' });
 
-			// Send with or without image attachment
-			const replyOptions = { embeds: [embed] };
-			if (attachment) {
-				replyOptions.files = [attachment];
-			}
-
-			await interaction.editReply(replyOptions);
+			// Send with all images
+			await interaction.editReply({
+				embeds: [embed],
+				files: files
+			});
 
 		} catch (error) {
 			console.error('Error in /match command:', error);
@@ -165,15 +183,5 @@ module.exports = {
 				ephemeral: true
 			});
 		}
-	},
-
-	// Helper to get summoner spell name
-	getSummonerName(id) {
-		const summoners = {
-			1: 'Cleanse', 3: 'Exhaust', 4: 'Flash', 6: 'Ghost',
-			7: 'Heal', 11: 'Smite', 12: 'Teleport', 14: 'Ignite',
-			21: 'Barrier', 32: 'Snowball'
-		};
-		return summoners[id] || `Spell${id}`;
 	}
 };

@@ -181,6 +181,86 @@ class MatchImageGenerator {
 		ctx.lineWidth = 1;
 		ctx.strokeRect(x, y, size, size);
 	}
+
+	/**
+	 * Generate a team composition image
+	 * Shows 5 players with champion icons and items in compact format
+	 */
+	static async generateTeamImage(teamParticipants, isWinningTeam, focusPuuid = null) {
+		const version = await this.getLatestVersion();
+		const DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${version}`;
+
+		const width = 420;
+		const rowHeight = 50;
+		const height = rowHeight * teamParticipants.length + 15;
+		const canvas = createCanvas(width, height);
+		const ctx = canvas.getContext('2d');
+
+		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
+
+		// Background
+		ctx.fillStyle = isWinningTeam ? '#0d1f30' : '#300d0d';
+		ctx.fillRect(0, 0, width, height);
+
+		// Border
+		ctx.strokeStyle = isWinningTeam ? '#3498db' : '#e74c3c';
+		ctx.lineWidth = 3;
+		ctx.strokeRect(1, 1, width - 2, height - 2);
+
+		let y = 8;
+
+		for (const player of teamParticipants) {
+			const isHighlighted = focusPuuid && player.puuid === focusPuuid;
+
+			// Highlight row for focused player
+			if (isHighlighted) {
+				ctx.fillStyle = isWinningTeam ? '#1a4a7c' : '#7c2a2a';
+				ctx.fillRect(5, y - 3, width - 10, rowHeight - 5);
+			}
+
+			// Champion icon
+			const champUrl = `${DDRAGON_BASE}/img/champion/${player.championName}.png`;
+			const champImg = await this.loadImageSafe(champUrl);
+			if (champImg) {
+				ctx.drawImage(champImg, 8, y, 38, 38);
+			}
+
+			// KDA
+			ctx.fillStyle = '#ffffff';
+			ctx.font = `bold 13px ${fontFamily}`;
+			const kda = `${player.kills}/${player.deaths}/${player.assists}`;
+			ctx.fillText(kda, 52, y + 25);
+
+			// Items (compact, 7 slots including trinket)
+			const items = [
+				player.item0, player.item1, player.item2,
+				player.item3, player.item4, player.item5, player.item6
+			];
+
+			let itemX = 115;
+			const itemSize = 28;
+			const itemSpacing = 30;
+
+			for (const itemId of items) {
+				if (itemId && itemId > 0) {
+					const itemUrl = `${DDRAGON_BASE}/img/item/${itemId}.png`;
+					const itemImg = await this.loadImageSafe(itemUrl);
+					if (itemImg) {
+						ctx.drawImage(itemImg, itemX, y + 5, itemSize, itemSize);
+					}
+				} else {
+					ctx.fillStyle = '#1a1a1a';
+					ctx.fillRect(itemX, y + 5, itemSize, itemSize);
+				}
+				itemX += itemSpacing;
+			}
+
+			y += rowHeight;
+		}
+
+		return canvas.toBuffer('image/png');
+	}
 }
 
 module.exports = MatchImageGenerator;
+
