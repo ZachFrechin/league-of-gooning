@@ -5,7 +5,7 @@ const MatchImageGenerator = require('../utils/matchImageGenerator');
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('match')
-		.setDescription('[BETA] Display details of a specific match with generated images')
+		.setDescription('[BETA] Display details of a specific match with generated image')
 		.addStringOption(option =>
 			option.setName('matchid')
 				.setDescription('Match ID (e.g., EUW1_1234567890)')
@@ -27,11 +27,15 @@ module.exports = {
 		const tagLine = interaction.options.getString('tag');
 
 		try {
+			console.log(`[/match] Starting for ${gameName}#${tagLine} match ${matchId}`);
+
 			// Get account PUUID
 			const account = await riotApi.getAccountByRiotId(gameName, tagLine);
+			console.log(`[/match] Got account PUUID`);
 
 			// Fetch match data
 			const matchData = await riotApi.getMatchDetails(matchId);
+			console.log(`[/match] Got match data`);
 
 			if (!matchData) {
 				return await interaction.editReply({
@@ -45,13 +49,14 @@ module.exports = {
 			const participant = playerStats.participant;
 			const allParticipants = matchData.info.participants;
 
-			// Calculate score (for display only, not saved)
+			// Calculate score
 			const score = MatchFormatter.calculateScore(
 				participant,
 				playerStats.gameDuration,
 				playerStats.isRemake,
 				allParticipants
 			);
+			console.log(`[/match] Score calculated: ${score}`);
 
 			// Prepare data
 			const color = participant.win ? '#3498db' : '#e74c3c';
@@ -73,33 +78,15 @@ module.exports = {
 				? `${(participant.challenges.killParticipation * 100).toFixed(1)}%`
 				: 'N/A';
 
-			// Generate images
+			// Generate ONLY player image (faster)
 			const files = [];
-
-			// 1. Player Match Image
 			try {
+				console.log(`[/match] Generating player image...`);
 				const matchImageBuffer = await MatchImageGenerator.generateMatchImage(participant, participant.win, score);
 				files.push(new AttachmentBuilder(matchImageBuffer, { name: 'match-player.png' }));
+				console.log(`[/match] Player image generated`);
 			} catch (imgErr) {
-				console.error('Failed to generate match image:', imgErr.message);
-			}
-
-			// 2. Team Images
-			const playerTeam = allParticipants.filter(p => p.teamId === participant.teamId);
-			const enemyTeam = allParticipants.filter(p => p.teamId !== participant.teamId);
-
-			try {
-				const allyImageBuffer = await MatchImageGenerator.generateTeamImage(playerTeam, participant.win, participant.puuid);
-				files.push(new AttachmentBuilder(allyImageBuffer, { name: 'team-ally.png' }));
-			} catch (imgErr) {
-				console.error('Failed to generate ally team image:', imgErr.message);
-			}
-
-			try {
-				const enemyImageBuffer = await MatchImageGenerator.generateTeamImage(enemyTeam, !participant.win, null);
-				files.push(new AttachmentBuilder(enemyImageBuffer, { name: 'team-enemy.png' }));
-			} catch (imgErr) {
-				console.error('Failed to generate enemy team image:', imgErr.message);
+				console.error('[/match] Failed to generate image:', imgErr.message);
 			}
 
 			// Build embed
@@ -112,16 +99,14 @@ module.exports = {
 				.setTitle(`${result} - ${queueType}`)
 				.setDescription(
 					`**${participant.championName}** • Level ${participant.champLevel} • ${duration}\n` +
-					`🎮 **Match ID:** \`${matchId}\`\n` +
-					`⚠️ *BETA - No ELO changes applied*`
+					`🎮 **Match ID:** \`${matchId}\``
 				);
 
-			// Use player image as main image if generated
 			if (files.length > 0) {
 				embed.setImage('attachment://match-player.png');
 			}
 
-			// Stats fields (same as auto match recaps)
+			// Stats
 			embed.addFields(
 				{
 					name: '\u200b',
@@ -160,24 +145,40 @@ module.exports = {
 				}
 			);
 
-			// Team composition section (using images)
-			embed.addFields({
-				name: '\u200b',
-				value: '**═══════════ TEAM COMPOSITIONS ═══════════**\n*See attached images below*',
-				inline: false
-			});
+			// Team compositions (text format for now - images too slow)
+			const playerTeam = allParticipants.filter(p => p.teamId === participant.teamId);
+			const enemyTeam = allParticipants.filter(p => p.teamId !== participant.teamId);
+
+			const teamComp = MatchFormatter.formatTeamComposition(playerTeam, participant.puuid);
+			const enemyComp = MatchFormatter.formatTeamComposition(enemyTeam, participant.puuid);
+
+			embed.addFields(
+				{
+					name: '\u200b',
+					value: '**═══════════ TEAMS ═══════════**',
+					inline: false
+				},
+				{
+					name: participant.win ? '🔵 Your Team (Victory)' : '🔵 Your Team (Defeat)',
+					value: `\`\`\`\n${teamComp}\n\`\`\``,
+					inline: true
+				},
+				{
+					name: participant.win ? '🔴 Enemy Team (Defeat)' : '🔴 Enemy Team (Victory)',
+					value: `\`\`\`\n${enemyComp}\n\`\`\``,
+					inline: true
+				}
+			);
 
 			embed.setTimestamp(matchData.info.gameEndTimestamp)
-				.setFooter({ text: 'BETA Command - Generated with node-canvas' });
+				.setFooter({ text: 'BETA Command' });
 
-			// Send with all images
-			await interaction.editReply({
-				embeds: [embed],
-				files: files
-			});
+			console.log(`[/match] Sending reply...`);
+			await interaction.editReply({ embeds: [embed], files: files });
+			console.log(`[/match] Done!`);
 
 		} catch (error) {
-			console.error('Error in /match command:', error);
+			console.error('[/match] Error:', error);
 			await interaction.editReply({
 				content: `❌ Error: ${error.message}`,
 				ephemeral: true
