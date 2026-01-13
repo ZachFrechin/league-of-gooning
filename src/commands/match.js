@@ -78,13 +78,19 @@ module.exports = {
 				? `${(participant.challenges.killParticipation * 100).toFixed(1)}%`
 				: 'N/A';
 
-			// Generate ONLY player image (faster)
+			// Get teams for image
+			const playerTeam = allParticipants.filter(p => p.teamId === participant.teamId);
+			const enemyTeam = allParticipants.filter(p => p.teamId !== participant.teamId);
+
+			// Generate FULL match image (player + teams)
 			const files = [];
 			try {
-				console.log(`[/match] Generating player image...`);
-				const matchImageBuffer = await MatchImageGenerator.generateMatchImage(participant, participant.win, score);
-				files.push(new AttachmentBuilder(matchImageBuffer, { name: 'match-player.png' }));
-				console.log(`[/match] Player image generated`);
+				console.log(`[/match] Generating full match image...`);
+				const matchImageBuffer = await MatchImageGenerator.generateFullMatchImage(
+					participant, participant.win, score, playerTeam, enemyTeam
+				);
+				files.push(new AttachmentBuilder(matchImageBuffer, { name: 'match-summary.png' }));
+				console.log(`[/match] Full match image generated`);
 			} catch (imgErr) {
 				console.error('[/match] Failed to generate image:', imgErr.message);
 			}
@@ -103,7 +109,7 @@ module.exports = {
 				);
 
 			if (files.length > 0) {
-				embed.setImage('attachment://match-player.png');
+				embed.setImage('attachment://match-summary.png');
 			}
 
 			// Stats
@@ -145,30 +151,7 @@ module.exports = {
 				}
 			);
 
-			// Team compositions (text format for now - images too slow)
-			const playerTeam = allParticipants.filter(p => p.teamId === participant.teamId);
-			const enemyTeam = allParticipants.filter(p => p.teamId !== participant.teamId);
-
-			const teamComp = MatchFormatter.formatTeamComposition(playerTeam, participant.puuid);
-			const enemyComp = MatchFormatter.formatTeamComposition(enemyTeam, participant.puuid);
-
-			embed.addFields(
-				{
-					name: '\u200b',
-					value: '**═══════════ TEAMS ═══════════**',
-					inline: false
-				},
-				{
-					name: participant.win ? '🔵 Your Team (Victory)' : '🔵 Your Team (Defeat)',
-					value: `\`\`\`\n${teamComp}\n\`\`\``,
-					inline: true
-				},
-				{
-					name: participant.win ? '🔴 Enemy Team (Defeat)' : '🔴 Enemy Team (Victory)',
-					value: `\`\`\`\n${enemyComp}\n\`\`\``,
-					inline: true
-				}
-			);
+			// Teams are now shown in the generated image above
 
 			embed.setTimestamp(matchData.info.gameEndTimestamp)
 				.setFooter({ text: 'BETA Command' });
