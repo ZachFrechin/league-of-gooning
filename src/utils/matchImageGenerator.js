@@ -46,7 +46,7 @@ class MatchImageGenerator {
 		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
 
 		const width = 550;
-		const playerHeight = 170;
+		const playerHeight = 190;
 		const teamRowHeight = 40;
 		const teamHeight = teamRowHeight * 5 + 40;
 		const height = playerHeight + teamHeight + 15;
@@ -92,19 +92,19 @@ class MatchImageGenerator {
 		const champImg = await this.loadImageCached(`${DDRAGON_BASE}/img/champion/${participant.championName}.png`);
 		if (champImg) ctx.drawImage(champImg, 15, 15, 75, 75);
 
-		// Level badge (prominent)
+		// Level badge (bottom-right corner of champion)
 		ctx.fillStyle = '#000000';
 		ctx.beginPath();
-		ctx.arc(75, 80, 16, 0, Math.PI * 2);
+		ctx.arc(82, 82, 16, 0, Math.PI * 2);
 		ctx.fill();
 		ctx.fillStyle = '#f1c40f';
 		ctx.beginPath();
-		ctx.arc(75, 80, 14, 0, Math.PI * 2);
+		ctx.arc(82, 82, 14, 0, Math.PI * 2);
 		ctx.fill();
 		ctx.fillStyle = '#000000';
 		ctx.font = `bold 14px ${fontFamily}`;
 		ctx.textAlign = 'center';
-		ctx.fillText(`${participant.champLevel}`, 75, 85);
+		ctx.fillText(`${participant.champLevel}`, 82, 87);
 		ctx.textAlign = 'left';
 
 		// Champion name
