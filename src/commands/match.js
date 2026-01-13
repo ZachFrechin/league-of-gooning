@@ -102,31 +102,31 @@ module.exports = {
 					name: `${gameName}#${tagLine}`,
 					iconURL: MatchFormatter.getChampionIconUrl(participant.championName)
 				})
-				.setTitle(`${result} - ${queueType}`)
-				.setDescription(
-					`**${participant.championName}** • Level ${participant.champLevel} • ${duration}\n` +
-					`🎮 **Match ID:** \`${matchId}\``
-				);
+				.setTitle(`${result} - ${queueType}`);
 
 			if (files.length > 0) {
 				embed.setImage('attachment://match-summary.png');
 			}
 
-			// Stats
+			// Big score at top
 			embed.addFields(
 				{
-					name: '\u200b',
-					value: '**═══════════ YOUR STATS ═══════════**',
+					name: '📊 PERFORMANCE',
+					value: `# ${score}`,
 					inline: false
-				},
+				}
+			);
+
+			// Stats (all same height with 2 lines)
+			embed.addFields(
 				{
 					name: '⚔️ KDA',
 					value: `\`\`\`\n${kda}\nRatio: ${kdaRatio}\n\`\`\``,
 					inline: true
 				},
 				{
-					name: '🎯 Kill Participation',
-					value: `\`\`\`\n${killParticipation}\n\`\`\``,
+					name: '🎯 Kill Part.',
+					value: `\`\`\`\n${killParticipation}\n \n\`\`\``,
 					inline: true
 				},
 				{
@@ -135,7 +135,7 @@ module.exports = {
 					inline: true
 				},
 				{
-					name: '🗡️ Farm (CS)',
+					name: '🗡️ Farm',
 					value: `\`\`\`\n${totalCS} CS\n${csPerMin}/min\n\`\`\``,
 					inline: true
 				},
@@ -146,7 +146,7 @@ module.exports = {
 				},
 				{
 					name: '💰 Gold',
-					value: `\`\`\`\n${(participant.goldEarned || 0).toLocaleString()}\n\`\`\``,
+					value: `\`\`\`\n${(participant.goldEarned || 0).toLocaleString()}\n \n\`\`\``,
 					inline: true
 				}
 			);
