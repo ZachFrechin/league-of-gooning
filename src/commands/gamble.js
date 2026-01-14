@@ -55,7 +55,7 @@ module.exports = {
 		}
 
 		// Calculate win chance: 4% / (mult * (mult - 1)), max 20%
-		const rawChance = 10 / (multiplier * (multiplier - 1));
+		const rawChance = 20 / (multiplier * (multiplier - 1.5));
 		const winChance = Math.min(20, rawChance);
 		const winChanceDisplay = winChance.toFixed(2);
 
