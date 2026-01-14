@@ -298,6 +298,24 @@ class DatabaseManager {
     return stmt.all(guildId, limit);
   }
 
+  // Direct ELO update (for gambling, etc.) - no match stats
+  updatePlayerEloDirectly(guildId, puuid, eloChange) {
+    const current = this.getPlayerElo(guildId, puuid);
+    if (!current) return null;
+
+    const newElo = Math.max(0, current.elo + eloChange); // Don't go below 0
+    const peakElo = Math.max(current.peak_elo || 1000, newElo);
+
+    const stmt = this.db.prepare(`
+      UPDATE player_elo
+      SET elo = ?,
+          peak_elo = ?,
+          updated_at = datetime('now')
+      WHERE guild_id = ? AND puuid = ?
+    `);
+    return stmt.run(newElo, peakElo, guildId, puuid);
+  }
+
   close() {
     this.db.close();
   }
