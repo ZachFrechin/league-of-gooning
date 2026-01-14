@@ -33,6 +33,7 @@ module.exports = {
       }
 
       const summonerName = summoner?.name || gameName;
+      const discordUserId = interaction.user.id;
 
       database.addTrackedAccount(
         guildId,
@@ -41,11 +42,12 @@ module.exports = {
         tagLine,
         account.puuid,
         process.env.RIOT_REGION,
-        summoner.id
+        summoner.id,
+        discordUserId
       );
 
       await interaction.editReply({
-        content: `✅ Successfully registered **${gameName}#${tagLine}** (Summoner: ${summonerName})!\n\nThe bot will now track their matches and post results to the configured channel.`
+        content: `✅ Compte **${gameName}#${tagLine}** enregistré et lié à <@${discordUserId}>!\n\n🎮 Les matchs seront trackés automatiquement.\n🎰 Tu peux maintenant utiliser \`/gamble\` sans spécifier ton compte!`
       });
     } catch (error) {
       console.error('Error registering account:', error);

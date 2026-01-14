@@ -119,10 +119,21 @@ class DatabaseManager {
       }
     }
 
+    // Migration: Add discord_user_id to tracked_accounts
+    try {
+      this.db.exec(`ALTER TABLE tracked_accounts ADD COLUMN discord_user_id TEXT;`);
+      console.log('Migration: Added discord_user_id column to tracked_accounts');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Migration error (discord_user_id):', error.message);
+      }
+    }
+
     // Create Indexes AFTER migrations to ensure columns exist
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_tracked_accounts_guild ON tracked_accounts(guild_id);
       CREATE INDEX IF NOT EXISTS idx_tracked_accounts_puuid ON tracked_accounts(puuid);
+      CREATE INDEX IF NOT EXISTS idx_tracked_accounts_discord ON tracked_accounts(discord_user_id);
       CREATE INDEX IF NOT EXISTS idx_processed_matches_lookup ON processed_matches(match_id, puuid, guild_id);
       CREATE INDEX IF NOT EXISTS idx_player_elo_guild ON player_elo(guild_id);
       CREATE INDEX IF NOT EXISTS idx_player_elo_elo ON player_elo(guild_id, elo DESC);
@@ -145,12 +156,35 @@ class DatabaseManager {
   }
 
   // Tracked Accounts
-  addTrackedAccount(guildId, summonerName, gameName, tagLine, puuid, region, summonerId = null) {
+  addTrackedAccount(guildId, summonerName, gameName, tagLine, puuid, region, summonerId = null, discordUserId = null) {
     const stmt = this.db.prepare(`
-      INSERT INTO tracked_accounts (guild_id, summoner_name, summoner_id, game_name, tag_line, puuid, region)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tracked_accounts (guild_id, summoner_name, summoner_id, game_name, tag_line, puuid, region, discord_user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    return stmt.run(guildId, summonerName, summonerId, gameName, tagLine, puuid, region);
+    return stmt.run(guildId, summonerName, summonerId, gameName, tagLine, puuid, region, discordUserId);
+  }
+
+  getAccountByDiscordId(guildId, discordUserId) {
+    const stmt = this.db.prepare('SELECT * FROM tracked_accounts WHERE guild_id = ? AND discord_user_id = ?');
+    return stmt.get(guildId, discordUserId);
+  }
+
+  linkAccountToDiscord(guildId, puuid, discordUserId) {
+    const stmt = this.db.prepare(`
+      UPDATE tracked_accounts
+      SET discord_user_id = ?
+      WHERE guild_id = ? AND puuid = ?
+    `);
+    return stmt.run(discordUserId, guildId, puuid);
+  }
+
+  unlinkAccountFromDiscord(guildId, discordUserId) {
+    const stmt = this.db.prepare(`
+      UPDATE tracked_accounts
+      SET discord_user_id = NULL
+      WHERE guild_id = ? AND discord_user_id = ?
+    `);
+    return stmt.run(guildId, discordUserId);
   }
 
   removeTrackedAccount(guildId, gameName, tagLine) {

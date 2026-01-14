@@ -5,14 +5,6 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('gamble')
 		.setDescription('🎰 Mise ton ELO et tente ta chance!')
-		.addStringOption(option =>
-			option.setName('gamename')
-				.setDescription('Nom du joueur (sans le tag)')
-				.setRequired(true))
-		.addStringOption(option =>
-			option.setName('tag')
-				.setDescription('Tag Line (ex: EUW)')
-				.setRequired(true))
 		.addIntegerOption(option =>
 			option.setName('montant')
 				.setDescription('Montant d\'ELO à miser')
@@ -26,44 +18,43 @@ module.exports = {
 
 	async execute(interaction, database) {
 		const guildId = interaction.guildId;
+		const discordUserId = interaction.user.id;
 
 		await interaction.deferReply();
 
-		const gameName = interaction.options.getString('gamename');
-		const tagLine = interaction.options.getString('tag');
 		const amount = interaction.options.getInteger('montant');
 		const multiplier = interaction.options.getNumber('multiplicateur');
 
-		// Find tracked account
-		const userAccount = database.getTrackedAccount(guildId, gameName, tagLine);
+		// Find the account linked to this Discord user
+		const userAccount = database.getAccountByDiscordId(guildId, discordUserId);
 
 		if (!userAccount) {
 			return await interaction.editReply({
-				content: `❌ Le joueur **${gameName}#${tagLine}** n'est pas enregistré! Utilise \`/register\` d'abord.`,
+				content: `❌ Tu n'as pas de compte LoL lié!\n\n📝 **Nouveau compte?** → \`/register gamename:TonNom tag:EUW\`\n🔗 **Compte déjà enregistré?** → \`/link gamename:TonNom tag:EUW\``,
 				ephemeral: true
 			});
 		}
+
+		const gameName = userAccount.game_name;
+		const tagLine = userAccount.tag_line;
 
 		const playerElo = database.getPlayerElo(guildId, userAccount.puuid);
 
 		if (!playerElo) {
 			return await interaction.editReply({
-				content: `❌ **${gameName}#${tagLine}** n'a pas encore d'ELO. Joue une partie d'abord!`,
+				content: `❌ Tu n'as pas encore d'ELO. Joue une partie d'abord!`,
 				ephemeral: true
 			});
 		}
 
 		if (amount > playerElo.elo) {
 			return await interaction.editReply({
-				content: `❌ **${gameName}#${tagLine}** n'a pas assez d'ELO!\nELO actuel: **${playerElo.elo}** | Mise demandée: **${amount}**`,
+				content: `❌ Tu n'as pas assez d'ELO!\nELO actuel: **${playerElo.elo}** | Mise demandée: **${amount}**`,
 				ephemeral: true
 			});
 		}
 
 		// Calculate win chance: 4% / (mult * (mult - 1)), max 20%
-		// x2 = 4/(2*1) = 2%
-		// x3 = 4/(3*2) = 0.67%
-		// x1.5 = 4/(1.5*0.5) = 5.33%
 		const rawChance = 4 / (multiplier * (multiplier - 1));
 		const winChance = Math.min(20, rawChance);
 		const winChanceDisplay = winChance.toFixed(2);
@@ -71,11 +62,11 @@ module.exports = {
 		const potentialWin = Math.floor(amount * multiplier);
 		const eloRank = EloCalculator.getEloRank(playerElo.elo);
 
-		// Create initial embed with suspense
+		// Create initial embed
 		const initialEmbed = new EmbedBuilder()
 			.setColor('#FFA500')
 			.setTitle('🎰 ROULETTE ELO')
-			.setDescription(`**${gameName}#${tagLine}** mise **${amount} ELO** avec un multiplicateur **x${multiplier}**!`)
+			.setDescription(`**${interaction.user.username}** (${gameName}#${tagLine}) mise **${amount} ELO** avec un multiplicateur **x${multiplier}**!`)
 			.addFields(
 				{
 					name: '💰 Mise',
@@ -102,10 +93,10 @@ module.exports = {
 
 		await interaction.editReply({ embeds: [initialEmbed] });
 
-		// Add suspense delay
+		// Suspense delay
 		await new Promise(resolve => setTimeout(resolve, 2000));
 
-		// Roll the dice!
+		// Roll!
 		const roll = Math.random() * 100;
 		const won = roll < winChance;
 
@@ -113,7 +104,6 @@ module.exports = {
 		let newElo;
 
 		if (won) {
-			// WIN!
 			const eloGain = potentialWin - amount;
 			newElo = playerElo.elo + eloGain;
 
@@ -124,7 +114,7 @@ module.exports = {
 			resultEmbed = new EmbedBuilder()
 				.setColor('#2ECC71')
 				.setTitle('🎉 JACKPOT!')
-				.setDescription(`**${gameName}#${tagLine}** a gagné le pari x${multiplier}!`)
+				.setDescription(`**${interaction.user.username}** a gagné le pari x${multiplier}!`)
 				.addFields(
 					{
 						name: '💰 Mise',
@@ -151,7 +141,6 @@ module.exports = {
 				.setTimestamp();
 
 		} else {
-			// LOSE
 			newElo = playerElo.elo - amount;
 
 			database.updatePlayerEloDirectly(guildId, userAccount.puuid, -amount);
@@ -170,7 +159,7 @@ module.exports = {
 			resultEmbed = new EmbedBuilder()
 				.setColor('#E74C3C')
 				.setTitle(`${reaction}`)
-				.setDescription(`**${gameName}#${tagLine}** a perdu son pari x${multiplier}...`)
+				.setDescription(`**${interaction.user.username}** a perdu son pari x${multiplier}...`)
 				.addFields(
 					{
 						name: '💰 Mise perdue',
