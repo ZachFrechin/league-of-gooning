@@ -350,6 +350,11 @@ class DatabaseManager {
     return stmt.run(newElo, peakElo, guildId, puuid);
   }
 
+  resetAllPlayerElo(guildId) {
+    const stmt = this.db.prepare(`DELETE FROM player_elo WHERE guild_id = ?`);
+    return stmt.run(guildId);
+  }
+
   close() {
     this.db.close();
   }
