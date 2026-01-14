@@ -81,15 +81,15 @@ class MatchFormatter {
       // JUNGLE SCORING
       // ==========================================
 
-      // 1. COMBAT & PRESENCE (Max 45 pts) - Higher KP weight
-      // KP (25 pts) - Junglers need to be active
+      // 1. COMBAT & PRESENCE (Max 50 pts)
+      // KP (30 pts) - Very influential role
       let kp = teamKills > 0 ? (kills + assists) / teamKills : (stats.challenges?.killParticipation || 0);
       let kpScore = 0;
-      if (kp >= 0.70) kpScore = 25;
-      else if (kp >= 0.60) kpScore = 22; // Boosted KP thresholds
-      else if (kp >= 0.50) kpScore = 18;
-      else if (kp >= 0.40) kpScore = 12;
-      else if (kp >= 0.30) kpScore = 6;
+      if (kp >= 0.70) kpScore = 30; // Increased max points
+      else if (kp >= 0.60) kpScore = 25;
+      else if (kp >= 0.50) kpScore = 20;
+      else if (kp >= 0.40) kpScore = 15;
+      else if (kp >= 0.30) kpScore = 10;
       score += kpScore;
 
       // KDA (20 pts)
@@ -103,34 +103,33 @@ class MatchFormatter {
       score += kdaScore;
 
       // 2. OBJECTIVES & FARM (Max 30 pts)
-      // CS/min (20 pts) - Lower/different yield than laners
+      // CS/min (20 pts) - Lower requirement (6.0/min for max)
       const totalCS = totalMinionsKilled + neutralMinionsKilled;
       const csPerMin = totalCS / gameMinutes;
       let csScore = 0;
-      if (csPerMin >= 7.0) csScore = 20;      // Harder to reach high CS in jgl
-      else if (csPerMin >= 6.0) csScore = 18;
-      else if (csPerMin >= 5.0) csScore = 15;
-      else if (csPerMin >= 4.0) csScore = 10;
-      else if (csPerMin >= 3.0) csScore = 5;
+      if (csPerMin >= 6.0) csScore = 20;      // 6.0/min -> Max score (easier)
+      else if (csPerMin >= 5.0) csScore = 16;
+      else if (csPerMin >= 4.0) csScore = 12;
+      else if (csPerMin >= 3.0) csScore = 8;
+      else if (csPerMin >= 2.0) csScore = 4;
       score += csScore;
 
-      // Objective Damage / Control (10 pts) - approximated by total damage/objectives taken if available
-      // Using generic damage or gold rank relative to team
+      // Objective Damage / Control (10 pts)
       let objScore = 0;
-      const goldShare = teamGold > 0 ? goldEarned / teamGold : 0;
-      if (goldEarned >= maxTeamGold * 0.9) objScore = 10; // Top earner
+      // Using generic damage or gold rank relative to team
+      if (goldEarned >= maxTeamGold * 0.9) objScore = 10;
       else if (goldEarned >= maxTeamGold * 0.8) objScore = 7;
       else objScore = 5;
       score += objScore;
 
-      // 3. DAMAGE (Max 25 pts)
+      // 3. DAMAGE (Max 20 pts) - Slightly reduced weight to balance KP increase
       const dpm = (totalDamageDealtToChampions || 0) / gameMinutes;
       let dmgScore = 0;
-      if (dpm >= 600) dmgScore = 25;
-      else if (dpm >= 450) dmgScore = 20;
-      else if (dpm >= 300) dmgScore = 15;
-      else if (dpm >= 150) dmgScore = 10;
-      else dmgScore = 5;
+      if (dpm >= 600) dmgScore = 20;
+      else if (dpm >= 450) dmgScore = 16;
+      else if (dpm >= 300) dmgScore = 12;
+      else if (dpm >= 150) dmgScore = 8;
+      else dmgScore = 4;
       score += dmgScore;
 
     } else {
