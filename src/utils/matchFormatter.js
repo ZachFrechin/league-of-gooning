@@ -81,15 +81,15 @@ class MatchFormatter {
       // JUNGLE SCORING
       // ==========================================
 
-      // 1. COMBAT & PRESENCE (Max 50 pts)
-      // KP (30 pts) - Very influential role
+      // 1. COMBAT & PRESENCE (Max 55 pts)
+      // KP (35 pts) - Very influential role, boosted
       let kp = teamKills > 0 ? (kills + assists) / teamKills : (stats.challenges?.killParticipation || 0);
       let kpScore = 0;
-      if (kp >= 0.70) kpScore = 30; // Increased max points
-      else if (kp >= 0.60) kpScore = 25;
-      else if (kp >= 0.50) kpScore = 20;
-      else if (kp >= 0.40) kpScore = 15;
-      else if (kp >= 0.30) kpScore = 10;
+      if (kp >= 0.65) kpScore = 35; // Boosted max
+      else if (kp >= 0.55) kpScore = 28;
+      else if (kp >= 0.45) kpScore = 22;
+      else if (kp >= 0.35) kpScore = 16;
+      else if (kp >= 0.25) kpScore = 10;
       score += kpScore;
 
       // KDA (20 pts)
@@ -169,19 +169,20 @@ class MatchFormatter {
       else if (dpm >= 400) damageScoreAbs = 10;
       else if (dpm >= 200) damageScoreAbs = 5;
 
-      // Relative Dmg%
+      // Relative Dmg% (reduced impact - absolute matters more)
       let damageScoreRel = 0;
       if (teamDamage > 0) {
         const dmgShare = (totalDamageDealtToChampions || 0) / teamDamage;
-        if (dmgShare >= 0.35) damageScoreRel = 25;
-        else if (dmgShare >= 0.30) damageScoreRel = 22;
-        else if (dmgShare >= 0.25) damageScoreRel = 18;
-        else if (dmgShare >= 0.20) damageScoreRel = 14;
-        else if (dmgShare >= 0.15) damageScoreRel = 10;
+        if (dmgShare >= 0.35) damageScoreRel = 20; // Reduced from 25
+        else if (dmgShare >= 0.30) damageScoreRel = 17;
+        else if (dmgShare >= 0.25) damageScoreRel = 14;
+        else if (dmgShare >= 0.20) damageScoreRel = 10;
+        else if (dmgShare >= 0.15) damageScoreRel = 6;
       }
 
-      let finalDamageScore = Math.max(damageScoreAbs, damageScoreRel);
-      if (finalDamageScore > 0 && totalDamageDealtToChampions >= maxTeamDamage) finalDamageScore += 5;
+      // Favor absolute score more, blend with relative
+      let finalDamageScore = Math.round(damageScoreAbs * 0.7 + damageScoreRel * 0.3);
+      if (totalDamageDealtToChampions >= maxTeamDamage) finalDamageScore += 3; // Reduced bonus
       score += Math.min(30, finalDamageScore);
 
       // 3. FARMING & GOLD (Max 35 pts)
@@ -196,20 +197,21 @@ class MatchFormatter {
       else if (csPerMin >= 3) csScoreAbs = 5;
 
 
-      // Relative Gold Bonus (Safety net, but capped at 20)
+      // Relative Gold Bonus (reduced impact - absolute CS matters more)
       let goldScoreRel = 0;
       if (teamGold > 0) {
         const goldShare = (goldEarned || 0) / teamGold;
-        if (goldShare >= 0.24) goldScoreRel = 20; // Cap at 20
-        else if (goldShare >= 0.21) goldScoreRel = 17;
-        else if (goldShare >= 0.19) goldScoreRel = 14;
-        else if (goldShare >= 0.17) goldScoreRel = 11;
-        else if (goldShare >= 0.15) goldScoreRel = 8;
+        if (goldShare >= 0.24) goldScoreRel = 15; // Reduced from 20
+        else if (goldShare >= 0.21) goldScoreRel = 12;
+        else if (goldShare >= 0.19) goldScoreRel = 9;
+        else if (goldShare >= 0.17) goldScoreRel = 6;
+        else if (goldShare >= 0.15) goldScoreRel = 3;
       }
 
-      let finalFarmScore = Math.max(csScoreAbs, goldScoreRel);
+      // Favor absolute CS more, blend with relative gold
+      let finalFarmScore = Math.round(csScoreAbs * 0.75 + goldScoreRel * 0.25);
       if (goldEarned >= maxTeamGold && finalFarmScore < 25) {
-        finalFarmScore += 5;
+        finalFarmScore += 3; // Reduced bonus
       }
 
       // STRICT RULE: If CS < 7.5, Cap Farm Score at 25.
