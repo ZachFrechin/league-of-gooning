@@ -34,30 +34,37 @@ module.exports = {
 			// 1. Get Account
 			const account = await riotApi.getAccountByRiotId(gameName, tagLine);
 
-			// 2. Get Match History (20 IDs) -> Filter to 10
-			const matchIds = await riotApi.getMatchIds(account.puuid);
-			const recentMatchIds = matchIds.slice(0, 10);
+			// 2. Get Match History (Fetch more to allow filtering)
+			const allMatchIds = await riotApi.getMatchIds(account.puuid, 50); // Fetch 50 instead of 20
 
-			// 3. Get Details for each match (Parallel)
-			const matches = await Promise.all(recentMatchIds.map(async (matchId) => {
+			// 3. Filter for Ranked and get details
+			const validMatches = [];
+
+			// Process sequentially or in batches to find 10 ranked matches
+			for (const matchId of allMatchIds) {
+				if (validMatches.length >= 10) break;
+
 				try {
 					const details = await riotApi.getMatchDetails(matchId);
+
+					// Filter: Only 420 (Solo) or 440 (Flex)
+					if (details.info.queueId !== 420 && details.info.queueId !== 440) {
+						continue;
+					}
+
 					const participant = details.info.participants.find(p => p.puuid === account.puuid);
-					if (!participant) return null;
+					if (!participant) continue;
 
 					// Localized Queue Name
 					let gameMode = details.info.gameMode;
 					const queueId = details.info.queueId;
 					if (queueId === 420) gameMode = 'RANKED SOLO';
 					else if (queueId === 440) gameMode = 'RANKED FLEX';
-					else if (queueId === 450) gameMode = 'ARAM';
-					else if (queueId === 400 || queueId === 430) gameMode = 'NORMAL';
-					else if (queueId === 1700) gameMode = 'ARENA';
 
 					// Get stored performance score if available
 					const perfScore = database.getMatchPerformanceScore(interaction.guildId, matchId, account.puuid);
 
-					return {
+					validMatches.push({
 						kills: participant.kills,
 						deaths: participant.deaths,
 						assists: participant.assists,
@@ -73,13 +80,11 @@ module.exports = {
 							participant.item3, participant.item4, participant.item5,
 							participant.item6
 						]
-					};
+					});
 				} catch (e) {
-					return null;
+					console.error(`Failed to fetch/process match ${matchId}:`, e.message);
 				}
-			}));
-
-			const validMatches = matches.filter(m => m !== null);
+			}
 
 			// 4. Generate Image
 			const imageBuffer = await MatchImageGenerator.generateHistoryImage(gameName, validMatches);

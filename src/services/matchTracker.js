@@ -110,6 +110,17 @@ class MatchTracker {
       console.log(`New match found for ${account.game_name}#${account.tag_line}: ${latestMatchId}`);
 
       const matchData = await this.riotApi.getMatchDetails(latestMatchId);
+
+      // STRICT FILTER: Only Ranked Solo/Duo (420) or Flex (440)
+      const validQueues = [420, 440];
+      if (!validQueues.includes(matchData.info.queueId)) {
+        console.log(`Match ${latestMatchId} is not ranked (${matchData.info.queueId}), skipping.`);
+        // Mark as processed so we don't check it again, but do NOT send notification or update ELO
+        this.database.markMatchProcessed(account.guild_id, latestMatchId, account.puuid);
+        this.database.updateLastMatchId(account.guild_id, account.puuid, latestMatchId);
+        return;
+      }
+
       const playerStats = this.riotApi.getPlayerStats(matchData, account.puuid);
 
       if (playerStats.isRemake) {
