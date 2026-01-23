@@ -3,8 +3,27 @@ const axios = require('axios');
 class RiotAPI {
   constructor(apiKey, region = 'euw1', routing = 'europe') {
     this.apiKey = apiKey;
-    this.region = region;
+    this.region = this.normalizeRegion(region);
     this.routing = routing;
+  }
+
+  normalizeRegion(region) {
+    if (!region) return 'euw1';
+    const r = region.toLowerCase();
+    const mapping = {
+      'euw': 'euw1',
+      'na': 'na1',
+      'eune': 'eun1',
+      'eun': 'eun1',
+      'br': 'br1',
+      'tr': 'tr1',
+      'jp': 'jp1',
+      'oc': 'oc1',
+      'lan': 'la1',
+      'las': 'la2',
+      'ru': 'ru'
+    };
+    return mapping[r] || r;
   }
 
   async getAccountByRiotId(gameName, tagLine) {
@@ -24,7 +43,7 @@ class RiotAPI {
 
   async getSummonerByPuuid(puuid, regionOverride = null) {
     try {
-      const region = regionOverride || this.region;
+      const region = this.normalizeRegion(regionOverride || this.region);
       const url = `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }
@@ -65,22 +84,22 @@ class RiotAPI {
   }
 
   async getRankedInfo(summonerId, regionOverride = null) {
+    const region = this.normalizeRegion(regionOverride || this.region);
+    const url = `https://${region}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`;
     try {
-      const region = regionOverride || this.region;
-      const url = `https://${region}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`;
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }
       });
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch ranked info:', error.message);
-      return [];
+      const statusCode = error.response?.status || 'Unknown';
+      throw new Error(`Failed to fetch ranked info (${region}): Status ${statusCode}`);
     }
   }
 
   async getChampionMasteries(puuid, regionOverride = null) {
     try {
-      const region = regionOverride || this.region;
+      const region = this.normalizeRegion(regionOverride || this.region);
       const url = `https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`;
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }

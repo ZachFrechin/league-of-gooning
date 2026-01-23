@@ -212,6 +212,11 @@ class DatabaseManager {
     return stmt.get(guildId, discordUserId);
   }
 
+  getTrackedAccount(guildId, gameName, tagLine) {
+    const stmt = this.db.prepare('SELECT * FROM tracked_accounts WHERE guild_id = ? AND game_name = ? COLLATE NOCASE AND tag_line = ? COLLATE NOCASE');
+    return stmt.get(guildId, gameName, tagLine);
+  }
+
   linkAccountToDiscord(guildId, puuid, discordUserId) {
     const stmt = this.db.prepare(`
       UPDATE tracked_accounts
@@ -258,7 +263,7 @@ class DatabaseManager {
   }
 
   getTrackedAccount(guildId, gameName, tagLine) {
-    const stmt = this.db.prepare('SELECT * FROM tracked_accounts WHERE guild_id = ? AND game_name = ? AND tag_line = ?');
+    const stmt = this.db.prepare('SELECT * FROM tracked_accounts WHERE guild_id = ? AND game_name = ? COLLATE NOCASE AND tag_line = ? COLLATE NOCASE');
     return stmt.get(guildId, gameName, tagLine);
   }
 

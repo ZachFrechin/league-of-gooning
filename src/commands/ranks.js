@@ -32,8 +32,15 @@ module.exports = {
 
 		try {
 			// Find if player is registered to get their region
-			const trackedAccount = database.getTrackedAccount(interaction.guildId, gameName, tagLine);
+			let trackedAccount = database.getTrackedAccount(interaction.guildId, gameName, tagLine);
+
+			// If not found by name, try to find by Discord ID if no params were provided
+			if (!trackedAccount && !interaction.options.getString('gamename')) {
+				trackedAccount = database.getAccountByDiscordId(interaction.guildId, interaction.user.id);
+			}
+
 			const region = trackedAccount ? trackedAccount.region : null;
+			console.log(`[Ranks] Fetching for ${gameName}#${tagLine} (Region: ${region || 'default'})`);
 
 			// 1. Get Account
 			const account = await riotApi.getAccountByRiotId(gameName, tagLine);
@@ -41,6 +48,11 @@ module.exports = {
 			// 2. Get Ranks
 			const summoner = await riotApi.getSummonerByPuuid(account.puuid, region);
 			const leagueEntries = await riotApi.getLeagueEntries(summoner.id, region);
+
+			console.log(`[Ranks] Found ${leagueEntries.length} entries for ${gameName}#${tagLine}`);
+			if (leagueEntries.length > 0) {
+				leagueEntries.forEach(e => console.log(` - ${e.queueType}: ${e.tier} ${e.rank}`));
+			}
 
 			// 3. Generate Image
 			const imageBuffer = await MatchImageGenerator.generateRanksImage(gameName, leagueEntries);
@@ -50,7 +62,8 @@ module.exports = {
 				.setColor('#F1C40F')
 				.setTitle(`🏅 Rangs: ${gameName}#${tagLine}`)
 				.setImage('attachment://ranks.png')
-				.setTimestamp();
+				.setTimestamp()
+				.setFooter({ text: `Région: ${region || 'default (' + riotApi.region + ')'}` });
 
 			await interaction.editReply({ embeds: [embed], files: [attachment] });
 
