@@ -137,11 +137,8 @@ class MatchTracker {
         return;
       }
 
-      // Fetch rank info
-      let rankedInfo = null;
-      if (account.summoner_id) {
-        rankedInfo = await this.riotApi.getRankedInfo(account.summoner_id);
-      }
+      // Fetch rank info (Using PUUID for better reliability)
+      let rankedInfo = await this.riotApi.getLeagueEntriesByPuuid(account.puuid, account.region);
 
       // Calculate performance score
       const allParticipants = matchData.info.participants;

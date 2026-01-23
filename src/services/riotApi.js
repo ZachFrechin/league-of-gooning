@@ -44,19 +44,19 @@ class RiotAPI {
   async getSummonerByPuuid(puuid, regionOverride = null) {
     try {
       const region = this.normalizeRegion(regionOverride || this.region);
-      const url = `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
+      const url = `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${encodeURIComponent(puuid)}`;
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }
       });
       return response.data;
     } catch (error) {
-      throw new Error(`Failed to fetch summoner: ${error.message}`);
+      throw new Error(`Failed to fetch summoner (${puuid}): ${error.message}`);
     }
   }
 
   async getMatchIdsByPuuid(puuid, count = 5) {
     try {
-      const url = `https://${this.routing}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids`;
+      const url = `https://${this.routing}.api.riotgames.com/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids`;
       const response = await axios.get(url, {
         params: { start: 0, count },
         headers: { 'X-Riot-Token': this.apiKey }
@@ -73,7 +73,7 @@ class RiotAPI {
 
   async getMatchDetails(matchId) {
     try {
-      const url = `https://${this.routing}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+      const url = `https://${this.routing}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(matchId)}`;
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }
       });
@@ -85,7 +85,7 @@ class RiotAPI {
 
   async getRankedInfo(summonerId, regionOverride = null) {
     const region = this.normalizeRegion(regionOverride || this.region);
-    const url = `https://${region}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`;
+    const url = `https://${region}.api.riotgames.com/lol/league/v4/entries/by-summoner/${encodeURIComponent(summonerId)}`;
     try {
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }
@@ -97,10 +97,30 @@ class RiotAPI {
     }
   }
 
+  async getRankedInfoByPuuid(puuid, regionOverride = null) {
+    const region = this.normalizeRegion(regionOverride || this.region);
+    // Modern Riot API endpoint for ranks by PUUID
+    const url = `https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${encodeURIComponent(puuid)}`;
+    try {
+      const response = await axios.get(url, {
+        headers: { 'X-Riot-Token': this.apiKey }
+      });
+      return response.data;
+    } catch (error) {
+      // Fallback if PUUID endpoint is not supported yet for this specific key/region
+      try {
+        const summoner = await this.getSummonerByPuuid(puuid, region);
+        return await this.getRankedInfo(summoner.id, region);
+      } catch (innerError) {
+        throw innerError;
+      }
+    }
+  }
+
   async getChampionMasteries(puuid, regionOverride = null) {
     try {
       const region = this.normalizeRegion(regionOverride || this.region);
-      const url = `https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`;
+      const url = `https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${encodeURIComponent(puuid)}`;
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }
       });
@@ -116,12 +136,16 @@ class RiotAPI {
     return this.getMatchIdsByPuuid(puuid, count);
   }
 
-  async getSummonerRank(summonerId) {
-    return this.getRankedInfo(summonerId);
+  async getSummonerRank(summonerId, regionOverride = null) {
+    return this.getRankedInfo(summonerId, regionOverride);
   }
 
-  async getLeagueEntries(summonerId) {
-    return this.getRankedInfo(summonerId);
+  async getLeagueEntries(summonerId, regionOverride = null) {
+    return this.getRankedInfo(summonerId, regionOverride);
+  }
+
+  async getLeagueEntriesByPuuid(puuid, regionOverride = null) {
+    return this.getRankedInfoByPuuid(puuid, regionOverride);
   }
 
   getPlayerStats(matchData, puuid) {

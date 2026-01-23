@@ -45,9 +45,8 @@ module.exports = {
 			// 1. Get Account
 			const account = await riotApi.getAccountByRiotId(gameName, tagLine);
 
-			// 2. Get Ranks
-			const summoner = await riotApi.getSummonerByPuuid(account.puuid, region);
-			const leagueEntries = await riotApi.getLeagueEntries(summoner.id, region);
+			// 2. Get Ranks (Using the more reliable PUUID endpoint)
+			const leagueEntries = await riotApi.getLeagueEntriesByPuuid(account.puuid, region);
 
 			console.log(`[Ranks] Found ${leagueEntries.length} entries for ${gameName}#${tagLine}`);
 			if (leagueEntries.length > 0) {
