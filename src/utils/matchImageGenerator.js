@@ -430,7 +430,14 @@ class MatchImageGenerator {
 			ctx.fillRect(x, y, 6, rowHeight - 8);
 
 			// Champion Image
-			const champImg = await this.loadImageCached(`${DDRAGON_BASE}/img/champion/${m.championName}.png`);
+			let champId = m.championName;
+			// Fix specific champion names for DDragon
+			if (champId === "FiddleSticks") champId = "Fiddlesticks";
+			if (champId === "Fiddlesticks") champId = "Fiddlesticks";
+			if (champId === "Belveth") champId = "Belveth";
+			if (champId === "Renata") champId = "Renata";
+
+			const champImg = await this.loadImageCached(`${DDRAGON_BASE}/img/champion/${champId}.png`);
 			if (champImg) {
 				ctx.drawImage(champImg, x + 20, y + 10, 60, 60);
 			}
@@ -691,7 +698,7 @@ class MatchImageGenerator {
 			if (id === "NunuWillump") id = "Nunu";
 			if (id === "Wukong") id = "MonkeyKing";
 			if (id === "LeBlanc") id = "Leblanc";
-			if (id === "Fiddlesticks") id = "FiddleSticks"; // Just to match key exactly
+			if (id === "Fiddlesticks") id = "Fiddlesticks"; // Just to match key exactly
 			if (id === "RenataGlasc") id = "Renata";
 			if (id === "BelVeth") id = "Belveth";
 
