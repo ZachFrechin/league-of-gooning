@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const loldleService = require('../services/loldleService');
+const MatchImageGenerator = require('../utils/matchImageGenerator');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -73,53 +74,40 @@ module.exports = {
 					rewardText = `\n⚠️ Pas de compte lié = Pas d'ELO gagné (/link).`;
 				}
 
-				const embed = this.generateEmbed(guesses, targetChamp, true);
+				const { embed, attachment } = await this.generateResult(guesses, targetChamp, true);
 				return await interaction.editReply({
 					content: `🎉 **VICTOIRE!** C'était bien **${targetChamp.name}**!${rewardText}`,
-					embeds: [embed]
+					embeds: [embed],
+					files: attachment ? [attachment] : []
 				});
 			}
 		}
 
-		const embed = this.generateEmbed(guesses, targetChamp, userStatus.solved);
+		const { embed, attachment } = await this.generateResult(guesses, targetChamp, userStatus.solved);
 
 		await interaction.editReply({
-			embeds: [embed]
+			embeds: [embed],
+			files: attachment ? [attachment] : []
 		});
 	},
 
-	generateEmbed(guesses, targetChamp, isSolved) {
+	async generateResult(guesses, targetChamp, isSolved) {
 		const embed = new EmbedBuilder()
 			.setTitle('🧩 LoLdle du Jour - Mode Classique')
 			.setColor(isSolved ? '#2ECC71' : '#3498DB')
-			.setDescription(guesses.length > 0 ? `Tentatives: **${guesses.length}**` : 'Devine le champion en tapant son nom avec `/loldle guess` !')
+			.setDescription(guesses.length > 0 ? `Tentatives: **${guesses.length}**` : 'Devine le champion en tapant son nom avec la commande `/loldle` !')
 			.setTimestamp();
 
+		let attachment = null;
+
 		if (guesses.length > 0) {
-			const rows = guesses.map(g => {
-				const comparison = loldleService.compare(g.champion_name, targetChamp);
-				if (!comparison) return "";
+			// Generate comparisons for the image
+			const attempts = guesses.map(g => loldleService.compare(g.champion_name, targetChamp)).filter(a => a !== null);
 
-				return `**${comparison.champion.name}**\n` +
-					`🚻${loldleService.getEmoji(comparison.gender)} ` +
-					`📍${loldleService.getEmoji(comparison.positions)} ` +
-					`🧬${loldleService.getEmoji(comparison.species)} ` +
-					`💧${loldleService.getEmoji(comparison.resource)} ` +
-					`📏${loldleService.getEmoji(comparison.rangeType)} ` +
-					`🌍${loldleService.getEmoji(comparison.regions)} ` +
-					`📅${loldleService.getEmoji(comparison.year)}`;
-			}).reverse(); // Last guess on top
-
-			// Discord limit check (can't have too many)
-			const displayRows = rows.slice(0, 10);
-
-			embed.addFields({
-				name: 'Historique (Récent en haut)',
-				value: displayRows.join('\n\n') || 'Aucune'
-			});
-
-			if (rows.length > 10) {
-				embed.setFooter({ text: `... et ${rows.length - 10} tentatives précédentes.` });
+			if (attempts.length > 0) {
+				const imageBuffer = await MatchImageGenerator.generateLoldleImage(attempts);
+				attachment = new AttachmentBuilder(imageBuffer, { name: 'loldle-history.png' });
+				embed.setImage('attachment://loldle-history.png');
 			}
 		}
 
@@ -129,27 +117,18 @@ module.exports = {
 		});
 
 		if (isSolved) {
-			// Clean name for DDragon: remove spaces, apostrophes, and fix capitalization
-			let champId = targetChamp.name
-				.replace("'", "")
-				.replace(" ", "")
-				.replace("&", "")
-				.replace(".", "");
+			const version = await MatchImageGenerator.getLatestVersion();
+			// Clean name for DDragon
+			let champId = targetChamp.name.replace(/[^a-zA-Z]/g, '');
 
-			// Special cases
-			if (champId === "NunuWillump") champId = "Nunu";
-			if (champId === "Wukong") champId = "MonkeyKing";
-			if (champId === "LeBlanc") champId = "Leblanc";
-			if (champId === "KaiSa") champId = "Kaisa";
-			if (champId === "KhaZix") champId = "Khazix";
-			if (champId === "ChoGath") champId = "Chogath";
-			if (champId === "VelKoz") champId = "Velkoz";
-			if (champId === "BelVeth") champId = "Belveth";
+			// Handle special cases for thumbnails
+			if (targetChamp.name === "LeBlanc") champId = "Leblanc";
+			if (targetChamp.name === "Wukong") champId = "MonkeyKing";
+			if (targetChamp.name === "Nunu & Willump") champId = "Nunu";
 
-			embed.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/14.2.1/img/champion/${champId}.png`);
-			embed.setImage(`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champId}_0.jpg`);
+			embed.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champId}.png`);
 		}
 
-		return embed;
+		return { embed, attachment };
 	}
 };

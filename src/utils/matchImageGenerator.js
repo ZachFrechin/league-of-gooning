@@ -503,100 +503,152 @@ class MatchImageGenerator {
 	}
 	/**
 	 * Generate LoLdle Guess History Image
-	 * @param {Array} guesses - Array of { champion: Data, analysis: { gender: bool, pos: bool, species: bool, resource: bool, range: bool, region: bool, year: 'correct'|'lower'|'higher' } }
+	 * @param {Array} attempts - Array of comparison objects from loldleService
 	 */
-	static async generateLoldleImage(guesses) {
+	static async generateLoldleImage(attempts) {
+		const version = await this.getLatestVersion();
+		const DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${version}`;
 		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
-		const rowHeight = 70;
-		const headerHeight = 50;
-		const width = 1000;
-		const height = headerHeight + (guesses.length * rowHeight) + 20;
+
+		const rowHeight = 85;
+		const headerHeight = 60;
+		const width = 1100;
+		// Limit to last 10 attempts to keep image size reasonable
+		const displayAttempts = attempts.slice(-10);
+		const height = headerHeight + (displayAttempts.length * rowHeight) + 20;
 
 		const canvas = createCanvas(width, height);
 		const ctx = canvas.getContext('2d');
 
-		// Background
-		ctx.fillStyle = '#1e2328';
+		// Background - Dark Blue/Grey like LoLdle
+		ctx.fillStyle = '#121212';
 		ctx.fillRect(0, 0, width, height);
 
 		// Headers
 		const columns = ['Champion', 'Genre', 'Position', 'Espèce', 'Ressource', 'Portée', 'Région', 'Année'];
-		const colWidths = [120, 100, 120, 120, 120, 100, 120, 100];
+		const colWidths = [120, 110, 140, 140, 130, 110, 160, 90];
 		let currentX = 20;
 
 		ctx.textAlign = 'center';
 		ctx.fillStyle = '#f0e6d2';
-		ctx.font = `bold 16px ${fontFamily}`;
+		ctx.font = `bold 18px ${fontFamily}`;
 
 		columns.forEach((col, i) => {
 			const w = colWidths[i];
-			ctx.fillText(col, currentX + w / 2, 35);
+			ctx.fillText(col.toUpperCase(), currentX + w / 2, 40);
 			currentX += w + 10;
 		});
 
-		// Rows
-		const version = await this.getLatestVersion();
-		const DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${version}`;
+		// Header underline
+		ctx.strokeStyle = '#c8aa6e';
+		ctx.lineWidth = 2;
+		ctx.beginPath();
+		ctx.moveTo(20, 50);
+		ctx.lineTo(width - 20, 50);
+		ctx.stroke();
 
-		// Preload Icons
-		const icons = await Promise.all(guesses.map(g =>
-			this.loadImageCached(`${DDRAGON_BASE}/img/champion/${g.champion.id}.png`)
-		));
+		// Preload Icon Images
+		const icons = await Promise.all(displayAttempts.map(a => {
+			const champId = a.champion.name
+				.replace("'", "")
+				.replace(" ", "")
+				.replace("&", "")
+				.replace(".", "");
 
-		for (let i = 0; i < guesses.length; i++) {
-			const g = guesses[i];
-			const y = headerHeight + (i * rowHeight);
+			// Basic sanitization, but full mapping is better
+			let id = champId;
+			if (id === "NunuWillump") id = "Nunu";
+			if (id === "Wukong") id = "MonkeyKing";
+			if (id === "LeBlanc") id = "Leblanc";
+
+			return this.loadImageCached(`${DDRAGON_BASE}/img/champion/${id}.png`);
+		}));
+
+		for (let i = 0; i < displayAttempts.length; i++) {
+			const a = displayAttempts[i];
+			const y = headerHeight + (i * rowHeight) + 10;
 			let x = 20;
-
-			// 1. Avatar
-			const w0 = colWidths[0];
-			if (icons[i]) {
-				ctx.drawImage(icons[i], x + 15, y + 5, 60, 60);
-			} else {
-				ctx.fillStyle = '#333';
-				ctx.fillRect(x + 15, y + 5, 60, 60);
-			}
-			x += w0 + 10;
 
 			// Helper to draw cell
 			const drawCell = (text, status, w) => {
-				let color = '#E74C3C'; // Red
-				if (status === true || status === 'correct') color = '#2ECC71'; // Green
-				else if (status === 'partial' || status === 'higher' || status === 'lower') color = '#E67E22'; // Orange
+				let color = '#7e2217'; // Dark Red (INCORRECT)
+				if (status === 'CORRECT') color = '#1a472a'; // Dark Green
+				else if (status === 'PARTIAL' || status === 'HIGHER' || status === 'LOWER') color = '#8a4b08'; // Dark Orange/Brown
 
+				// Draw rounded rect for cell
 				ctx.fillStyle = color;
-				ctx.fillRect(x, y + 5, w, 60);
+				// ctx.fillRect(x, y, w, 75);
+				this.drawRoundedRect(ctx, x, y, w, 75, 5, true);
+
+				// Border for "active" look
+				ctx.strokeStyle = status === 'CORRECT' ? '#2ecc71' : status === 'INCORRECT' ? '#e74c3c' : '#f1c40f';
+				ctx.lineWidth = 1;
+				ctx.stroke();
 
 				ctx.fillStyle = '#FFF';
 				ctx.font = `bold 14px ${fontFamily}`;
 
-				// Handle array joins for text
+				// Handle text wrapping/formatting
 				const display = Array.isArray(text) ? text.join('\n') : text.toString();
 				const lines = display.split('\n');
-				const lineHeight = 18;
-				const startY = y + 30 - ((lines.length - 1) * lineHeight) / 2 + 5;
+				const lineHeight = 16;
+				const startY = y + 37 - ((lines.length - 1) * lineHeight) / 2;
 
 				lines.forEach((line, idx) => {
-					ctx.fillText(line, x + w / 2, startY + idx * lineHeight);
+					const textToDraw = line.length > 15 ? line.substring(0, 13) + '..' : line;
+					ctx.fillText(textToDraw, x + w / 2, startY + idx * lineHeight);
 				});
 
 				// Arrow for year
-				if (status === 'higher') ctx.fillText('↑', x + w / 2, y + 55);
-				if (status === 'lower') ctx.fillText('↓', x + w / 2, y + 55);
+				if (status === 'HIGHER') {
+					ctx.font = `bold 20px ${fontFamily}`;
+					ctx.fillText('↑', x + w / 2, y + 70);
+				}
+				if (status === 'LOWER') {
+					ctx.font = `bold 20px ${fontFamily}`;
+					ctx.fillText('↓', x + w / 2, y + 70);
+				}
 
 				x += w + 10;
 			};
 
-			drawCell(g.champion.gender, g.analysis.gender, colWidths[1]);
-			drawCell(g.champion.positions.join('\n'), g.analysis.pos, colWidths[2]);
-			drawCell(g.champion.species.join('\n'), g.analysis.species, colWidths[3]);
-			drawCell(g.champion.resource, g.analysis.resource, colWidths[4]);
-			drawCell(g.champion.rangeType, g.analysis.range, colWidths[5]);
-			drawCell(g.champion.regions.join('\n'), g.analysis.region, colWidths[6]);
-			drawCell(g.champion.releaseYear, g.analysis.year, colWidths[7]);
+			// 1. Avatar Cell
+			ctx.fillStyle = '#1e2328';
+			this.drawRoundedRect(ctx, x, y, colWidths[0], 75, 5, true);
+			ctx.strokeStyle = '#c8aa6e';
+			ctx.stroke();
+
+			if (icons[i]) {
+				ctx.drawImage(icons[i], x + 22, y + 10, 55, 55);
+			}
+			x += colWidths[0] + 10;
+
+			// 2. Data Cells
+			drawCell(a.champion.gender, a.gender, colWidths[1]);
+			drawCell(a.champion.positions, a.positions, colWidths[2]);
+			drawCell(a.champion.species, a.species, colWidths[3]);
+			drawCell(a.champion.resource, a.resource, colWidths[4]);
+			drawCell(a.champion.rangeType, a.rangeType, colWidths[5]);
+			drawCell(a.champion.regions, a.regions, colWidths[6]);
+			drawCell(a.champion.year, a.year, colWidths[7]);
 		}
 
 		return canvas.toBuffer('image/png');
+	}
+
+	static drawRoundedRect(ctx, x, y, width, height, radius, fill = true) {
+		ctx.beginPath();
+		ctx.moveTo(x + radius, y);
+		ctx.lineTo(x + width - radius, y);
+		ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+		ctx.lineTo(x + width, y + height - radius);
+		ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+		ctx.lineTo(x + radius, y + height);
+		ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+		ctx.lineTo(x, y + radius);
+		ctx.quadraticCurveTo(x, y, x + radius, y);
+		ctx.closePath();
+		if (fill) ctx.fill();
 	}
 }
 
