@@ -457,24 +457,7 @@ class MatchImageGenerator {
 			ctx.font = `14px ${fontFamily}`;
 			const kdaRatio = m.deaths === 0 ? 'Perfect' : ((m.kills + m.assists) / m.deaths).toFixed(2);
 			let kdaStr = `${kdaRatio} KDA`;
-
-			// Performance Score (If exists)
-			if (m.performanceScore !== null) {
-				let scoreColor = '#bdc3c7'; // Grey
-				if (m.performanceScore >= 90) scoreColor = '#ff3e3e'; // Legendary red
-				else if (m.performanceScore >= 80) scoreColor = '#f1c40f'; // Gold
-				else if (m.performanceScore >= 70) scoreColor = '#9b59b6'; // Purple
-				else if (m.performanceScore >= 60) scoreColor = '#3498db'; // Blue
-
-				ctx.fillText(kdaStr, x + 100, y + 60);
-				const kdaWidth = ctx.measureText(kdaStr).width;
-
-				ctx.fillStyle = scoreColor;
-				ctx.font = `bold 14px ${fontFamily}`;
-				ctx.fillText(` • Score: ${m.performanceScore}/100`, x + 100 + kdaWidth, y + 60);
-			} else {
-				ctx.fillText(kdaStr, x + 100, y + 60);
-			}
+			ctx.fillText(kdaStr, x + 100, y + 60);
 
 			// Items
 			if (m.items) {
@@ -497,6 +480,25 @@ class MatchImageGenerator {
 					const tImg = await this.loadImageCached(`${DDRAGON_BASE}/img/item/${trinketId}.png`);
 					if (tImg) ctx.drawImage(tImg, itemX + 8, y + 23, itemSize, itemSize);
 				}
+			}
+
+			// Performance Score (Big & Centered between Items and Queue)
+			if (m.performanceScore !== null) {
+				let scoreColor = '#bdc3c7'; // Grey
+				if (m.performanceScore >= 90) scoreColor = '#ff3e3e'; // Legendary red
+				else if (m.performanceScore >= 80) scoreColor = '#f1c40f'; // Gold
+				else if (m.performanceScore >= 70) scoreColor = '#9b59b6'; // Purple
+				else if (m.performanceScore >= 60) scoreColor = '#3498db'; // Blue
+
+				ctx.fillStyle = scoreColor;
+				ctx.font = `bold 28px ${fontFamily}`;
+				ctx.textAlign = 'center';
+				ctx.fillText(m.performanceScore, x + 660, y + 50);
+
+				// Label "Score" smaller below
+				ctx.fillStyle = '#7f8c8d';
+				ctx.font = `12px ${fontFamily}`;
+				ctx.fillText('SCORE', x + 660, y + 65);
 			}
 
 			// Mode & Date
@@ -689,7 +691,7 @@ class MatchImageGenerator {
 			if (id === "NunuWillump") id = "Nunu";
 			if (id === "Wukong") id = "MonkeyKing";
 			if (id === "LeBlanc") id = "Leblanc";
-			if (id === "Fiddlesticks") id = "Fiddlesticks"; // Just to match key exactly
+			if (id === "Fiddlesticks") id = "FiddleSticks"; // Just to match key exactly
 			if (id === "RenataGlasc") id = "Renata";
 			if (id === "BelVeth") id = "Belveth";
 
