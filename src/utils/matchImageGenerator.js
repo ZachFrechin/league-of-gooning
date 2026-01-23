@@ -402,7 +402,25 @@ class MatchImageGenerator {
 			ctx.fillStyle = '#bdc3c7';
 			ctx.font = `14px ${fontFamily}`;
 			const kdaRatio = m.deaths === 0 ? 'Perfect' : ((m.kills + m.assists) / m.deaths).toFixed(2);
-			ctx.fillText(`${kdaRatio} KDA`, x + 100, y + 60);
+			let kdaStr = `${kdaRatio} KDA`;
+
+			// Performance Score (If exists)
+			if (m.performanceScore !== null) {
+				let scoreColor = '#bdc3c7'; // Grey
+				if (m.performanceScore >= 90) scoreColor = '#ff3e3e'; // Legendary red
+				else if (m.performanceScore >= 80) scoreColor = '#f1c40f'; // Gold
+				else if (m.performanceScore >= 70) scoreColor = '#9b59b6'; // Purple
+				else if (m.performanceScore >= 60) scoreColor = '#3498db'; // Blue
+
+				ctx.fillText(kdaStr, x + 100, y + 60);
+				const kdaWidth = ctx.measureText(kdaStr).width;
+
+				ctx.fillStyle = scoreColor;
+				ctx.font = `bold 14px ${fontFamily}`;
+				ctx.fillText(` • Score: ${m.performanceScore}/100`, x + 100 + kdaWidth, y + 60);
+			} else {
+				ctx.fillText(kdaStr, x + 100, y + 60);
+			}
 
 			// Items
 			if (m.items) {
@@ -448,8 +466,8 @@ class MatchImageGenerator {
 	static async generateRanksImage(summonerName, ranks) {
 		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
 
-		const width = 600;
-		const height = 300;
+		const width = 700;
+		const height = 350;
 		const canvas = createCanvas(width, height);
 		const ctx = canvas.getContext('2d');
 
@@ -459,72 +477,86 @@ class MatchImageGenerator {
 
 		// Header
 		ctx.fillStyle = '#f0e6d2';
-		ctx.font = `bold 24px ${fontFamily}`;
+		ctx.font = `bold 28px ${fontFamily}`;
 		ctx.textAlign = 'center';
-		ctx.fillText(`RANKS - ${summonerName.toUpperCase()}`, width / 2, 40);
+		ctx.fillText(`RANKS - ${summonerName.toUpperCase()}`, width / 2, 45);
 
-		// We display up to 2 queues: SOLO/DUO and FLEX
 		const queues = ['RANKED_SOLO_5x5', 'RANKED_FLEX_SR'];
 		const labels = ['SOLO / DUO', 'FLEX 5v5'];
 
-		const cardWidth = 250;
-		const startX = (width - (queues.length * cardWidth) - 20) / 2;
-		const startY = 70;
+		const cardWidth = 300;
+		const startX = (width - (queues.length * cardWidth) - 40) / 2;
+		const startY = 80;
 
-		// Load Tier Icons (Static assets usually, here we might simulate or load)
-		// For MVP, we'll draw colored badges if images missing
 		const TIER_COLORS = {
-			'IRON': '#575553',
-			'BRONZE': '#8c513a',
-			'SILVER': '#818b8d',
-			'GOLD': '#e3ac3e',
-			'PLATINUM': '#27ae60',
-			'EMERALD': '#2ecc71',
-			'DIAMOND': '#3498db',
-			'MASTER': '#9b59b6',
-			'GRANDMASTER': '#e74c3c',
-			'CHALLENGER': '#f1c40f'
+			'IRON': '#A19D94', 'BRONZE': '#CD7F32', 'SILVER': '#C0C0C0',
+			'GOLD': '#D4AF37', 'PLATINUM': '#00CED1', 'EMERALD': '#2ECC71',
+			'DIAMOND': '#3498DB', 'MASTER': '#9B59B6', 'GRANDMASTER': '#E74C3C',
+			'CHALLENGER': '#F1C40F', 'UNRANKED': '#555555'
 		};
 
-		queues.forEach((qType, i) => {
-			const x = startX + i * (cardWidth + 20);
+		for (let i = 0; i < queues.length; i++) {
+			const qType = queues[i];
+			const x = startX + i * (cardWidth + 40);
 			const y = startY;
 			const rank = ranks.find(r => r.queueType === qType);
+			const tier = rank ? rank.tier.toUpperCase() : 'UNRANKED';
 
 			// Card Bg
 			ctx.fillStyle = '#111519';
-			ctx.fillRect(x, y, cardWidth, 200);
+			this.drawRoundedRect(ctx, x, y, cardWidth, 240, 10, true);
 
 			// Border
-			const tier = rank ? rank.tier : 'UNRANKED';
 			ctx.strokeStyle = TIER_COLORS[tier] || '#333';
-			ctx.lineWidth = 2;
-			ctx.strokeRect(x, y, cardWidth, 200);
+			ctx.lineWidth = 3;
+			this.drawRoundedRect(ctx, x, y, cardWidth, 240, 10, false, true);
 
 			// Label
 			ctx.fillStyle = '#9e9e9e';
-			ctx.font = `bold 16px ${fontFamily}`;
-			ctx.fillText(labels[i], x + cardWidth / 2, y + 30);
+			ctx.font = `bold 18px ${fontFamily}`;
+			ctx.textAlign = 'center';
+			ctx.fillText(labels[i], x + cardWidth / 2, y + 35);
+
+			// Tier Image
+			const tierName = tier.toLowerCase();
+			const emblemUrl = tier === 'UNRANKED'
+				? 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-unranked.png'
+				: `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tierName}.png`;
+
+			try {
+				const emblem = await this.loadImageCached(emblemUrl);
+				if (emblem) {
+					ctx.drawImage(emblem, x + cardWidth / 2 - 60, y + 45, 120, 120);
+				}
+			} catch (e) {
+				// Fallback if image fails
+				ctx.fillStyle = TIER_COLORS[tier];
+				ctx.beginPath();
+				ctx.arc(x + cardWidth / 2, y + 105, 40, 0, Math.PI * 2);
+				ctx.fill();
+			}
 
 			// Tier Text
 			ctx.fillStyle = TIER_COLORS[tier] || '#fff';
-			ctx.font = `bold 28px ${fontFamily}`;
+			ctx.font = `bold 24px ${fontFamily}`;
 			if (rank) {
-				ctx.fillText(`${rank.tier} ${rank.rank}`, x + cardWidth / 2, y + 100);
+				ctx.fillText(`${rank.tier} ${rank.rank}`, x + cardWidth / 2, y + 185);
 				ctx.fillStyle = '#fff';
 				ctx.font = `18px ${fontFamily}`;
-				ctx.fillText(`${rank.leaguePoints} LP`, x + cardWidth / 2, y + 130);
+				ctx.fillText(`${rank.leaguePoints} LP`, x + cardWidth / 2, y + 210);
 
 				// Winrate
-				const wr = Math.round((rank.wins / (rank.wins + rank.losses)) * 100);
+				const total = rank.wins + rank.losses;
+				const wr = Math.round((rank.wins / total) * 100);
 				ctx.fillStyle = wr >= 50 ? '#2ecc71' : '#e74c3c';
-				ctx.font = `14px ${fontFamily}`;
-				ctx.fillText(`${rank.wins}W - ${rank.losses}L (${wr}%)`, x + cardWidth / 2, y + 160);
+				ctx.font = `bold 14px ${fontFamily}`;
+				ctx.fillText(`${rank.wins}W - ${rank.losses}L (${wr}%)`, x + cardWidth / 2, y + 230);
 			} else {
 				ctx.fillStyle = '#555';
-				ctx.fillText('UNRANKED', x + cardWidth / 2, y + 110);
+				ctx.font = `bold 32px ${fontFamily}`;
+				ctx.fillText('UNRANKED', x + cardWidth / 2, y + 185);
 			}
-		});
+		}
 
 		return canvas.toBuffer('image/png');
 	}
@@ -663,7 +695,7 @@ class MatchImageGenerator {
 		return canvas.toBuffer('image/png');
 	}
 
-	static drawRoundedRect(ctx, x, y, width, height, radius, fill = true) {
+	static drawRoundedRect(ctx, x, y, width, height, radius, fill = true, stroke = false) {
 		ctx.beginPath();
 		ctx.moveTo(x + radius, y);
 		ctx.lineTo(x + width - radius, y);
@@ -676,6 +708,7 @@ class MatchImageGenerator {
 		ctx.quadraticCurveTo(x, y, x + radius, y);
 		ctx.closePath();
 		if (fill) ctx.fill();
+		if (stroke) ctx.stroke();
 	}
 }
 

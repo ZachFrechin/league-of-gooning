@@ -54,6 +54,9 @@ module.exports = {
 					else if (queueId === 400 || queueId === 430) gameMode = 'NORMAL';
 					else if (queueId === 1700) gameMode = 'ARENA';
 
+					// Get stored performance score if available
+					const perfScore = database.getMatchPerformanceScore(interaction.guildId, matchId, account.puuid);
+
 					return {
 						kills: participant.kills,
 						deaths: participant.deaths,
@@ -64,6 +67,7 @@ module.exports = {
 						gameDuration: details.info.gameDuration,
 						gameEndTimestamp: details.info.gameEndTimestamp,
 						gameMode: gameMode,
+						performanceScore: perfScore,
 						items: [
 							participant.item0, participant.item1, participant.item2,
 							participant.item3, participant.item4, participant.item5,

@@ -191,7 +191,7 @@ class MatchTracker {
         files: message.files || []
       });
 
-      this.database.markMatchProcessed(account.guild_id, latestMatchId, account.puuid);
+      this.database.markMatchProcessed(account.guild_id, latestMatchId, account.puuid, score);
       this.database.updateLastMatchId(account.guild_id, account.puuid, latestMatchId);
 
       console.log(`Match notification sent for ${account.game_name}#${account.tag_line} (ELO: ${eloChange > 0 ? '+' : ''}${eloChange})`);

@@ -110,8 +110,9 @@ class DatabaseManager {
     try {
       const tableInfo = this.db.pragma('table_info(processed_matches)');
       const hasGuildId = tableInfo.some(col => col.name === 'guild_id');
+      const hasScore = tableInfo.some(col => col.name === 'performance_score');
 
-      if (!hasGuildId) {
+      if (!hasGuildId || !hasScore) {
         console.log('Migration: Updating processed_matches schema...');
         this.db.exec(`
           ALTER TABLE processed_matches RENAME TO processed_matches_old;
@@ -120,10 +121,14 @@ class DatabaseManager {
             match_id TEXT,
             puuid TEXT NOT NULL,
             guild_id TEXT NOT NULL,
+            performance_score INTEGER,
             processed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (match_id, puuid, guild_id)
           );
           
+          INSERT INTO processed_matches (match_id, puuid, guild_id, processed_at)
+          SELECT match_id, puuid, guild_id, processed_at FROM processed_matches_old;
+
           DROP TABLE processed_matches_old;
         `);
         console.log('Migration: processed_matches schema updated.');
@@ -268,9 +273,15 @@ class DatabaseManager {
     return stmt.get(matchId, puuid, guildId) !== undefined;
   }
 
-  markMatchProcessed(guildId, matchId, puuid) {
-    const stmt = this.db.prepare('INSERT OR IGNORE INTO processed_matches (match_id, puuid, guild_id) VALUES (?, ?, ?)');
-    return stmt.run(matchId, puuid, guildId);
+  markMatchProcessed(guildId, matchId, puuid, performanceScore = null) {
+    const stmt = this.db.prepare('INSERT OR IGNORE INTO processed_matches (match_id, puuid, guild_id, performance_score) VALUES (?, ?, ?, ?)');
+    return stmt.run(matchId, puuid, guildId, performanceScore);
+  }
+
+  getMatchPerformanceScore(guildId, matchId, puuid) {
+    const stmt = this.db.prepare('SELECT performance_score FROM processed_matches WHERE match_id = ? AND puuid = ? AND guild_id = ?');
+    const result = stmt.get(matchId, puuid, guildId);
+    return result ? result.performance_score : null;
   }
 
   // ELO System

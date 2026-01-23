@@ -22,9 +22,10 @@ class RiotAPI {
     }
   }
 
-  async getSummonerByPuuid(puuid) {
+  async getSummonerByPuuid(puuid, regionOverride = null) {
     try {
-      const url = `https://${this.region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
+      const region = regionOverride || this.region;
+      const url = `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }
       });
@@ -63,9 +64,10 @@ class RiotAPI {
     }
   }
 
-  async getRankedInfo(summonerId) {
+  async getRankedInfo(summonerId, regionOverride = null) {
     try {
-      const url = `https://${this.region}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`;
+      const region = regionOverride || this.region;
+      const url = `https://${region}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`;
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }
       });
@@ -76,9 +78,10 @@ class RiotAPI {
     }
   }
 
-  async getChampionMasteries(puuid) {
+  async getChampionMasteries(puuid, regionOverride = null) {
     try {
-      const url = `https://${this.region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`;
+      const region = regionOverride || this.region;
+      const url = `https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`;
       const response = await axios.get(url, {
         headers: { 'X-Riot-Token': this.apiKey }
       });

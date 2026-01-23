@@ -31,14 +31,16 @@ module.exports = {
 		}
 
 		try {
+			// Find if player is registered to get their region
+			const trackedAccount = database.getTrackedAccount(interaction.guildId, gameName, tagLine);
+			const region = trackedAccount ? trackedAccount.region : null;
+
 			// 1. Get Account
 			const account = await riotApi.getAccountByRiotId(gameName, tagLine);
 
 			// 2. Get Ranks
-			// The account object from getAccountByRiotId (v1) only gives PUUID, gameName, tagLine.
-			// We need summonerId for league-v4 (ranks).
-			const summoner = await riotApi.getSummonerByPuuid(account.puuid);
-			const leagueEntries = await riotApi.getLeagueEntries(summoner.id);
+			const summoner = await riotApi.getSummonerByPuuid(account.puuid, region);
+			const leagueEntries = await riotApi.getLeagueEntries(summoner.id, region);
 
 			// 3. Generate Image
 			const imageBuffer = await MatchImageGenerator.generateRanksImage(gameName, leagueEntries);
