@@ -76,6 +76,32 @@ class RiotAPI {
     }
   }
 
+  async getChampionMasteries(puuid) {
+    try {
+      const url = `https://${this.region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}`;
+      const response = await axios.get(url, {
+        headers: { 'X-Riot-Token': this.apiKey }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch champion masteries:', error.message);
+      return [];
+    }
+  }
+
+  // Aliases for compatibility
+  async getMatchIds(puuid, count = 20) {
+    return this.getMatchIdsByPuuid(puuid, count);
+  }
+
+  async getSummonerRank(summonerId) {
+    return this.getRankedInfo(summonerId);
+  }
+
+  async getLeagueEntries(summonerId) {
+    return this.getRankedInfo(summonerId);
+  }
+
   getPlayerStats(matchData, puuid) {
     const participant = matchData.info.participants.find(p => p.puuid === puuid);
     if (!participant) {

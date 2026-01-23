@@ -1,0 +1,171 @@
+championName,gender,positions,species,resource,range_type,regions,release_date
+Aatrox,Male,['Top'],['Darkin'],Manaless,['Melee'],"['Runeterra', 'Shurima']",2013-06-13
+Ahri,Female,['Middle'],['Vastayan'],Mana,['Ranged'],['Ionia'],2011-12-14
+Akali,Female,['Middle'],['Human'],Energy,['Melee'],['Ionia'],2010-05-11
+Akshan,Male,['Middle'],['Human'],Mana,['Ranged'],['Shurima'],2021-07-22
+Alistar,Male,['Support'],['Minotaur'],Mana,['Melee'],['Runeterra'],2009-02-21
+Ambessa,Female,"['Top', 'Jungle']",['Human'],Energy,['Melee'],"['Piltover', 'Noxus']",2024-11-06
+Amumu,Male,['Jungle'],"['Undead', 'Yordle']",Mana,['Melee'],['Shurima'],2009-06-26
+Anivia,Female,['Middle'],"['Spirit', 'God']",Mana,['Ranged'],['Freljord'],2009-07-10
+Annie,Female,['Middle'],"['Human', 'Magicborn']",Mana,['Ranged'],"['Noxus', 'Runeterra']",2009-02-21
+Aphelios,Male,['Bottom'],"['Human', 'Spiritualist']",Mana,['Ranged'],['Targon'],2019-12-11
+Ashe,Female,['Bottom'],"['Human', 'Iceborn']",Mana,['Ranged'],['Freljord'],2009-02-21
+Aurelion Sol,Male,['Middle'],"['Celestial', 'Dragon']",Mana,['Ranged'],"['Runeterra', 'Targon']",2016-03-24
+Aurora,Female,"['Top', 'Middle']",['Vastayan'],Mana,['Ranged'],['Freljord'],2024-07-17
+Azir,Male,['Middle'],['God-Warrior'],Mana,['Ranged'],['Shurima'],2014-09-16
+Bard,Male,['Support'],['Celestial'],Mana,['Ranged'],['Runeterra'],2015-03-12
+Bel'Veth,Female,['Jungle'],['Void-Being'],Manaless,['Melee'],['Void'],2022-06-09
+Blitzcrank,Other,['Support'],['Golem'],Mana,['Melee'],['Zaun'],2009-09-02
+Brand,Male,['Support'],"['Human', 'Magically Altered']",Mana,['Ranged'],"['Freljord', 'Runeterra']",2011-04-12
+Braum,Male,['Support'],"['Human', 'Iceborn']",Mana,['Melee'],['Freljord'],2014-05-12
+Briar,Female,['Jungle'],['Golem'],Health costs,['Melee'],['Noxus'],2023-09-14
+Caitlyn,Female,['Bottom'],['Human'],Mana,['Ranged'],['Piltover'],2011-01-04
+Camille,Female,['Top'],"['Human', 'Cyborg']",Mana,['Melee'],['Piltover'],2016-12-07
+Cassiopeia,Female,"['Top', 'Middle']","['Human', 'Magically Altered']",Mana,['Ranged'],"['Noxus', 'Shurima']",2010-12-14
+Cho'Gath,Male,['Top'],['Void-Being'],Mana,['Melee'],['Void'],2009-06-26
+Corki,Male,"['Middle', 'Bottom']",['Yordle'],Mana,['Ranged'],"['Bandle City', 'Piltover']",2009-09-19
+Darius,Male,['Top'],['Human'],Mana,['Melee'],['Noxus'],2012-05-23
+Diana,Female,"['Jungle', 'Middle']","['Human', 'Aspect']",Mana,['Melee'],['Targon'],2012-08-07
+Dr. Mundo,Male,['Top'],"['Human', 'Chemically Altered']",Health costs,['Melee'],['Zaun'],2009-09-02
+Draven,Male,['Bottom'],['Human'],Mana,['Ranged'],['Noxus'],2012-06-06
+Ekko,Male,"['Jungle', 'Middle']",['Human'],Mana,['Melee'],['Zaun'],2015-05-29
+Elise,Female,['Jungle'],"['Human', 'Magically Altered']",Mana,"['Melee', 'Ranged']","['Shadow Isles', 'Noxus']",2012-10-26
+Evelynn,Female,['Jungle'],"['Demon', 'Spirit']",Mana,['Melee'],['Runeterra'],2009-05-01
+Ezreal,Male,['Bottom'],"['Human', 'Magicborn']",Mana,['Ranged'],['Piltover'],2010-03-16
+Fiddlesticks,Other,['Jungle'],"['Demon', 'Spirit']",Mana,['Ranged'],['Runeterra'],2009-02-21
+Fiora,Female,['Top'],['Human'],Mana,['Melee'],['Demacia'],2012-02-29
+Fizz,Male,['Middle'],['Yordle'],Mana,['Melee'],['Bilgewater'],2011-11-15
+Galio,Male,['Middle'],['Golem'],Mana,['Melee'],['Demacia'],2010-08-10
+Gangplank,Male,['Top'],['Human'],Mana,['Melee'],['Bilgewater'],2009-08-19
+Garen,Male,['Top'],['Human'],Manaless,['Melee'],['Demacia'],2010-04-27
+Gnar,Male,['Top'],['Yordle'],Rage,"['Melee', 'Ranged']",['Freljord'],2014-08-14
+Gragas,Male,"['Top', 'Jungle']","['Human', 'Iceborn']",Mana,['Melee'],['Freljord'],2010-02-02
+Graves,Male,['Jungle'],['Human'],Mana,['Ranged'],['Bilgewater'],2011-10-19
+Gwen,Female,"['Top', 'Jungle']","['Human', 'Magically Altered']",Mana,['Melee'],"['Shadow Isles', 'Camavor']",2021-04-15
+Hecarim,Male,['Jungle'],['Undead'],Mana,['Melee'],"['Shadow Isles', 'Camavor']",2012-04-18
+Hwei,Male,['Middle'],"['Human', 'Magicborn']",Mana,['Ranged'],['Ionia'],2023-12-05
+Heimerdinger,Male,"['Top', 'Middle']",['Yordle'],Mana,['Ranged'],['Piltover'],2009-10-10
+Illaoi,Female,['Top'],"['Human', 'Spiritualist']",Mana,['Melee'],['Bilgewater'],2015-11-24
+Irelia,Female,"['Top', 'Middle']","['Human', 'Spiritualist']",Mana,['Melee'],['Ionia'],2010-11-16
+Ivern,Male,['Jungle'],"['Human', 'Magically Altered']",Mana,['Ranged'],"['Ionia', 'Freljord']",2016-10-05
+Janna,Female,['Support'],"['Spirit', 'God']",Mana,['Ranged'],"['Zaun', 'Shurima']",2009-09-02
+Jarvan IV,Male,['Jungle'],['Human'],Mana,['Melee'],['Demacia'],2011-03-01
+Jax,Male,"['Top', 'Jungle']",['Unknown'],Mana,['Melee'],"['Runeterra', 'Icathia', 'Shurima']",2009-02-21
+Jayce,Male,"['Top', 'Middle']",['Human'],Mana,"['Melee', 'Ranged']",['Piltover'],2012-07-07
+Jhin,Male,['Bottom'],"['Human', 'Spiritualist']",Mana,['Ranged'],['Ionia'],2016-02-01
+Jinx,Female,['Bottom'],"['Human', 'Chemically Altered']",Mana,['Ranged'],['Zaun'],2013-10-10
+K'Sante,Male,['Top'],['Human'],Mana,['Melee'],['Shurima'],2022-11-02
+Kai'Sa,Female,['Bottom'],"['Human', 'Void-Being']",Mana,['Ranged'],"['Shurima', 'Void']",2018-03-07
+Kalista,Female,['Bottom'],['Undead'],Mana,['Ranged'],"['Shadow Isles', 'Camavor']",2014-11-20
+Karma,Female,['Support'],"['Human', 'Spiritualist']",Mana,['Ranged'],['Ionia'],2011-02-01
+Karthus,Male,['Jungle'],['Undead'],Mana,['Ranged'],"['Shadow Isles', 'Noxus']",2009-06-12
+Kassadin,Male,['Middle'],"['Human', 'Void-Being']",Mana,['Melee'],"['Shurima', 'Void']",2009-08-07
+Katarina,Female,['Middle'],['Human'],Manaless,['Melee'],['Noxus'],2009-09-19
+Kayle,Female,['Top'],"['Human', 'Magically Altered', 'Aspect']",Mana,"['Melee', 'Ranged']","['Demacia', 'Targon']",2009-02-21
+Kayn,Male,['Jungle'],"['Darkin', 'Human', 'Magically Altered']",Mana,['Melee'],"['Ionia', 'Runeterra', 'Noxus', 'Shurima']",2017-07-12
+Kennen,Male,['Top'],['Yordle'],Energy,['Ranged'],['Ionia'],2010-04-08
+Kha'Zix,Male,['Jungle'],['Void-Being'],Mana,['Melee'],['Void'],2012-09-27
+Kindred,Other,['Jungle'],"['Spirit', 'God']",Mana,['Ranged'],['Runeterra'],2015-10-14
+Kled,Male,['Top'],['Yordle'],Courage,['Melee'],['Noxus'],2016-08-10
+Kog'Maw,Male,['Bottom'],['Void-Being'],Mana,['Ranged'],['Void'],2010-06-24
+LeBlanc,Female,['Middle'],"['Human', 'Magically Altered']",Mana,['Ranged'],['Noxus'],2010-11-02
+Lee Sin,Male,['Jungle'],"['Human', 'Spiritualist']",Energy,['Melee'],['Ionia'],2011-04-01
+Leona,Female,['Support'],"['Human', 'Aspect']",Mana,['Melee'],['Targon'],2011-07-13
+Lillia,Female,['Jungle'],['Spirit'],Mana,['Melee'],['Ionia'],2020-07-22
+Lissandra,Female,['Middle'],"['Human', 'Iceborn']",Mana,['Ranged'],['Freljord'],2013-04-30
+Lucian,Male,['Bottom'],['Human'],Mana,['Ranged'],"['Demacia', 'Shadow Isles']",2013-08-22
+Lulu,Female,['Support'],['Yordle'],Mana,['Ranged'],['Bandle City'],2012-03-20
+Lux,Female,"['Middle', 'Support']","['Human', 'Magicborn']",Mana,['Ranged'],['Demacia'],2010-10-19
+Malphite,Male,['Top'],['Golem'],Mana,['Melee'],"['Ixtal', 'Shurima']",2009-09-02
+Malzahar,Male,['Middle'],"['Human', 'Void-Being']",Mana,['Ranged'],"['Shurima', 'Void']",2010-06-01
+Maokai,Male,"['Top', 'Support']",['Spirit'],Mana,['Melee'],['Shadow Isles'],2011-02-16
+Master Yi,Male,['Jungle'],"['Human', 'Spiritualist']",Mana,['Melee'],['Ionia'],2009-02-21
+Mel,Female,"['Middle', 'Support']","['Human', 'Magically Altered']",Mana,['Ranged'],"['Noxus', 'Piltover']",2025-01-23
+Milio,Male,['Support'],"['Human', 'Magicborn']",Mana,['Ranged'],['Ixtal'],2023-03-23
+Miss Fortune,Female,['Bottom'],['Human'],Mana,['Ranged'],['Bilgewater'],2010-09-08
+Mordekaiser,Male,['Top'],['Revenant'],Shield,['Melee'],"['Noxus', 'Shadow Isles']",2010-02-24
+Morgana,Female,['Support'],"['Human', 'Magically Altered', 'Aspect']",Mana,['Ranged'],"['Demacia', 'Targon']",2009-02-21
+Naafiri,Female,['Middle'],"['Dog', 'Darkin']",Mana,['Melee'],['Shurima'],2023-07-19
+Nami,Female,['Support'],['Vastayan'],Mana,['Ranged'],"['Runeterra', 'Bilgewater']",2012-12-07
+Nasus,Male,['Top'],['God-Warrior'],Mana,['Melee'],['Shurima'],2009-10-01
+Nautilus,Male,['Support'],['Revenant'],Mana,['Melee'],['Bilgewater'],2012-02-14
+Neeko,Female,"['Middle', 'Support']",['Vastayan'],Mana,['Ranged'],['Ixtal'],2018-12-05
+Nidalee,Female,['Jungle'],"['Human', 'Spiritualist']",Mana,"['Melee', 'Ranged']",['Ixtal'],2009-12-17
+Nilah,Female,['Bottom'],"['Human', 'Magically Altered']",Mana,['Melee'],['Bilgewater'],2022-07-13
+Nocturne,Male,['Jungle'],"['Demon', 'Spirit']",Mana,['Melee'],['Runeterra'],2011-03-15
+Nunu & Willump,Male,['Jungle'],"['Human', 'Yeti']",Mana,['Melee'],['Freljord'],2009-02-21
+Olaf,Male,['Top'],"['Human', 'Iceborn']",Mana,['Melee'],['Freljord'],2010-06-09
+Orianna,Female,['Middle'],['Golem'],Mana,['Ranged'],['Piltover'],2011-06-01
+Ornn,Male,['Top'],"['Spirit', 'God']",Mana,['Melee'],['Freljord'],2017-08-23
+Pantheon,Male,"['Top', 'Support']","['Human', 'Aspect']",Mana,['Melee'],['Targon'],2010-02-02
+Poppy,Female,"['Top', 'Support']",['Yordle'],Mana,['Melee'],['Demacia'],2010-01-13
+Pyke,Male,['Support'],['Revenant'],Mana,['Melee'],['Bilgewater'],2018-05-31
+Qiyana,Female,['Middle'],"['Human', 'Magicborn']",Mana,['Melee'],['Ixtal'],2019-06-28
+Quinn,Female,['Top'],['Human'],Mana,['Ranged'],['Demacia'],2013-03-01
+Rakan,Male,['Support'],['Vastayan'],Mana,['Melee'],['Ionia'],2017-04-19
+Rammus,Male,['Jungle'],['Unknown'],Mana,['Melee'],['Shurima'],2009-07-10
+Rek'Sai,Female,['Jungle'],['Void-Being'],Rage,['Melee'],"['Shurima', 'Void']",2014-12-11
+Rell,Female,['Support'],"['Human', 'Magicborn', 'Magically Altered']",Mana,['Melee'],['Noxus'],2020-12-10
+Renata Glasc,Female,['Support'],"['Human', 'Chemically Altered']",Mana,['Ranged'],['Zaun'],2022-02-17
+Renekton,Male,['Top'],['God-Warrior'],Fury,['Melee'],['Shurima'],2011-01-18
+Rengar,Male,['Jungle'],['Vastayan'],Ferocity,['Melee'],"['Ixtal', 'Shurima']",2012-08-21
+Riven,Female,['Top'],['Human'],Manaless,['Melee'],"['Ionia', 'Noxus']",2011-09-14
+Rumble,Male,['Top'],['Yordle'],Heat,['Melee'],['Bandle City'],2011-04-26
+Ryze,Male,"['Top', 'Middle']","['Human', 'Magically Altered']",Mana,['Ranged'],['Runeterra'],2009-02-21
+Samira,Female,['Bottom'],['Human'],Mana,['Ranged'],"['Shurima', 'Noxus']",2020-09-21
+Sejuani,Female,['Jungle'],"['Human', 'Iceborn']",Mana,['Melee'],['Freljord'],2012-01-17
+Senna,Female,['Support'],"['Human', 'Undead']",Mana,['Ranged'],['Shadow Isles'],2019-11-10
+Seraphine,Female,['Support'],"['Human', 'Magicborn']",Mana,['Ranged'],"['Piltover', 'Zaun']",2020-10-29
+Sett,Male,['Top'],"['Human', 'Vastayan']",Grit,['Melee'],['Ionia'],2020-01-14
+Shaco,Male,['Jungle'],['Spirit'],Mana,['Melee'],['Runeterra'],2009-10-10
+Shen,Male,"['Top', 'Support']","['Human', 'Spiritualist']",Energy,['Melee'],['Ionia'],2010-03-24
+Shyvana,Female,['Jungle'],"['Dragon', 'Magically Altered']",Fury,['Melee'],['Demacia'],2011-11-01
+Singed,Male,['Top'],"['Human', 'Chemically Altered']",Mana,['Melee'],"['Zaun', 'Piltover']",2009-04-18
+Sion,Male,['Top'],['Revenant'],Mana,['Melee'],['Noxus'],2009-02-21
+Sivir,Female,['Bottom'],['Human'],Mana,['Ranged'],['Shurima'],2009-02-21
+Skarner,Male,['Jungle'],['Brackern'],Mana,['Melee'],['Ixtal'],2011-08-09
+Smolder,Male,"['Middle', 'Bottom']",['Dragon'],Mana,['Ranged'],"['Camavor', 'Noxus']",2024-01-31
+Sona,Female,['Support'],"['Human', 'Magicborn']",Mana,['Ranged'],"['Demacia', 'Ionia']",2010-09-21
+Soraka,Female,['Support'],['Celestial'],Mana,['Ranged'],"['Targon', 'Ionia']",2009-02-21
+Swain,Male,['Support'],"['Human', 'Magically Altered']",Mana,['Ranged'],['Noxus'],2010-10-05
+Sylas,Male,['Middle'],"['Human', 'Magicborn']",Mana,['Melee'],"['Demacia', 'Freljord']",2019-01-25
+Syndra,Female,['Middle'],"['Human', 'Magicborn']",Mana,['Ranged'],['Ionia'],2012-09-13
+Tahm Kench,Male,"['Top', 'Support']","['Demon', 'Spirit']",Mana,['Melee'],"['Bilgewater', 'Runeterra']",2015-07-09
+Taliyah,Female,"['Jungle', 'Middle']","['Human', 'Magicborn']",Mana,['Ranged'],['Shurima'],2016-05-18
+Talon,Male,"['Jungle', 'Middle']",['Human'],Mana,['Melee'],['Noxus'],2011-08-24
+Taric,Male,['Support'],"['Human', 'Aspect']",Mana,['Melee'],"['Targon', 'Demacia']",2009-08-19
+Teemo,Male,"['Top', 'Jungle']",['Yordle'],Mana,['Ranged'],['Bandle City'],2009-02-21
+Thresh,Male,['Support'],['Undead'],Mana,['Ranged'],['Shadow Isles'],2013-01-23
+Tristana,Female,['Bottom'],['Yordle'],Mana,['Ranged'],['Bandle City'],2009-02-21
+Trundle,Male,"['Top', 'Jungle']","['Troll', 'Iceborn']",Mana,['Melee'],['Freljord'],2010-12-01
+Tryndamere,Male,['Top'],"['Human', 'Magically Altered']",Fury,['Melee'],['Freljord'],2009-05-01
+Twisted Fate,Male,['Middle'],"['Human', 'Magicborn']",Mana,['Ranged'],['Bilgewater'],2009-02-21
+Twitch,Male,['Bottom'],"['Rat', 'Chemically Altered']",Mana,['Ranged'],['Zaun'],2009-05-01
+Udyr,Male,['Jungle'],"['Human', 'Spiritualist']",Mana,['Melee'],"['Freljord', 'Ionia']",2009-12-02
+Urgot,Male,['Top'],"['Human', 'Chemically Altered', 'Cyborg']",Mana,['Ranged'],"['Noxus', 'Zaun']",2010-08-24
+Varus,Male,['Bottom'],"['Darkin', 'Human']",Mana,['Ranged'],"['Ionia', 'Runeterra', 'Shurima']",2012-05-08
+Vayne,Female,['Bottom'],['Human'],Mana,['Ranged'],['Demacia'],2011-05-10
+Veigar,Male,['Middle'],['Yordle'],Mana,['Ranged'],"['Runeterra', 'Bandle City', 'Shadow Isles']",2009-07-24
+Vel'Koz,Male,"['Middle', 'Support']",['Void-Being'],Mana,['Ranged'],['Void'],2014-02-27
+Vex,Female,['Middle'],['Yordle'],Mana,['Ranged'],"['Shadow Isles', 'Bandle City']",2021-09-23
+Vi,Female,['Jungle'],['Human'],Mana,['Melee'],"['Piltover', 'Zaun']",2012-12-19
+Viego,Male,['Jungle'],['Undead'],Manaless,['Melee'],"['Shadow Isles', 'Camavor']",2021-01-21
+Viktor,Male,['Middle'],"['Human', 'Cyborg']",Mana,['Ranged'],"['Piltover', 'Zaun']",2011-12-29
+Vladimir,Male,"['Top', 'Middle']","['Human', 'Magically Altered']",Bloodthirst,['Ranged'],"['Noxus', 'Shadow Isles', 'Camavor']",2010-07-27
+Volibear,Male,"['Top', 'Jungle']","['Spirit', 'God']",Mana,['Melee'],['Freljord'],2011-11-29
+Warwick,Male,"['Top', 'Jungle']","['Human', 'Chemically Altered', 'Cyborg']",Mana,['Melee'],['Zaun'],2009-02-21
+Wukong,Male,"['Top', 'Jungle']",['Vastayan'],Mana,['Melee'],['Ionia'],2011-07-26
+Xayah,Female,['Bottom'],['Vastayan'],Mana,['Ranged'],['Ionia'],2017-04-19
+Xerath,Male,"['Middle', 'Support']",['God-Warrior'],Mana,['Ranged'],['Shurima'],2011-10-05
+Xin Zhao,Male,['Jungle'],['Human'],Mana,['Melee'],"['Demacia', 'Ionia', 'Noxus']",2010-07-13
+Yasuo,Male,['Middle'],"['Human', 'Magicborn']",Flow,['Melee'],['Ionia'],2013-12-13
+Yone,Male,"['Top', 'Middle']","['Human', 'Magically Altered']",Manaless,['Melee'],['Ionia'],2020-08-06
+Yorick,Male,['Top'],"['Human', 'Magically Altered']",Mana,['Melee'],['Shadow Isles'],2011-06-22
+Yuumi,Female,['Support'],"['Cat', 'Magically Altered']",Mana,['Ranged'],['Bandle City'],2019-05-14
+Zac,Male,['Jungle'],['Golem'],Health costs,['Melee'],['Zaun'],2013-03-29
+Zed,Male,['Middle'],"['Human', 'Magically Altered']",Energy,['Melee'],['Ionia'],2012-11-13
+Zeri,Female,['Bottom'],"['Human', 'Magicborn']",Mana,['Ranged'],['Zaun'],2022-01-20
+Ziggs,Male,"['Middle', 'Bottom']",['Yordle'],Mana,['Ranged'],['Zaun'],2012-02-01
+Zilean,Male,['Support'],"['Human', 'Magicborn']",Mana,['Ranged'],"['Runeterra', 'Icathia', 'Shurima']",2009-04-18
+Zoe,Female,"['Middle', 'Support']","['Human', 'Aspect']",Mana,['Ranged'],['Targon'],2017-11-21
+Zyra,Female,['Support'],['Unknown'],Mana,['Ranged'],['Ixtal'],2012-07-24

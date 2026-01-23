@@ -35,12 +35,8 @@ module.exports = {
 			const account = await riotApi.getAccountByRiotId(gameName, tagLine);
 
 			// 2. Get Ranks
-			const ranks = await riotApi.getSummonerRank(account.id); // Assuming getSummonerRank uses summonerId
-			// We might need to fetch summonerId if account endpoint only gives puuid.
-			// Check RiotApi implementation. Assuming it handles it or we fetch summoner.
-			// Let's assume passed account object or method handles it.
-			// RiotAPI usually needs summonerId for league-v4.
-			// Let's fetch summoner first if needed.
+			// The account object from getAccountByRiotId (v1) only gives PUUID, gameName, tagLine.
+			// We need summonerId for league-v4 (ranks).
 			const summoner = await riotApi.getSummonerByPuuid(account.puuid);
 			const leagueEntries = await riotApi.getLeagueEntries(summoner.id);
 

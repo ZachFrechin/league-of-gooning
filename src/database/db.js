@@ -75,6 +75,15 @@ class DatabaseManager {
         date TEXT NOT NULL, 
         solved INTEGER DEFAULT 0
       );
+
+      CREATE TABLE IF NOT EXISTS loldle_guesses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        discord_user_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        champion_name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     // Migration: Add summoner_id column if it doesn't exist
@@ -425,6 +434,25 @@ class DatabaseManager {
       WHERE guild_id = ? AND discord_user_id = ? AND date = ?
     `);
     return stmt.run(guildId, discordUserId, today);
+  }
+
+  getLoldleGuesses(guildId, discordUserId) {
+    const today = new Date().toISOString().split('T')[0];
+    const stmt = this.db.prepare(`
+      SELECT champion_name FROM loldle_guesses
+      WHERE guild_id = ? AND discord_user_id = ? AND date = ?
+      ORDER BY created_at ASC
+    `);
+    return stmt.all(guildId, discordUserId, today);
+  }
+
+  addLoldleGuess(guildId, discordUserId, championName) {
+    const today = new Date().toISOString().split('T')[0];
+    const stmt = this.db.prepare(`
+      INSERT INTO loldle_guesses (guild_id, discord_user_id, date, champion_name)
+      VALUES (?, ?, ?, ?)
+    `);
+    return stmt.run(guildId, discordUserId, today, championName);
   }
 
   resetAllPlayerElo(guildId) {
