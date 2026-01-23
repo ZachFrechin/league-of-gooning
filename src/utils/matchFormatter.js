@@ -85,11 +85,11 @@ class MatchFormatter {
       // KP (35 pts) - Very influential role, boosted
       let kp = teamKills > 0 ? (kills + assists) / teamKills : (stats.challenges?.killParticipation || 0);
       let kpScore = 0;
-      if (kp >= 0.65) kpScore = 35; // Boosted max
-      else if (kp >= 0.55) kpScore = 28;
-      else if (kp >= 0.45) kpScore = 22;
-      else if (kp >= 0.35) kpScore = 16;
-      else if (kp >= 0.25) kpScore = 10;
+      if (kp >= 0.65) kpScore = 38; // Boosted max
+      else if (kp >= 0.55) kpScore = 32;
+      else if (kp >= 0.45) kpScore = 26;
+      else if (kp >= 0.35) kpScore = 20;
+      else if (kp >= 0.25) kpScore = 14;
       score += kpScore;
 
       // KDA (20 pts)
