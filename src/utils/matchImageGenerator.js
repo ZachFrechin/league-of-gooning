@@ -466,27 +466,28 @@ class MatchImageGenerator {
 	static async generateRanksImage(summonerName, ranks) {
 		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
 
-		const width = 700;
-		const height = 350;
+		const width = 850;
+		const height = 450;
 		const canvas = createCanvas(width, height);
 		const ctx = canvas.getContext('2d');
 
-		// Background
+		// Background (Elegant dark gradient simulation)
 		ctx.fillStyle = '#1e2328';
 		ctx.fillRect(0, 0, width, height);
 
 		// Header
 		ctx.fillStyle = '#f0e6d2';
-		ctx.font = `bold 28px ${fontFamily}`;
+		ctx.font = `bold 36px ${fontFamily}`;
 		ctx.textAlign = 'center';
-		ctx.fillText(`RANKS - ${summonerName.toUpperCase()}`, width / 2, 45);
+		ctx.fillText(`RANKS - ${summonerName.toUpperCase()}`, width / 2, 55);
 
 		const queues = ['RANKED_SOLO_5x5', 'RANKED_FLEX_SR'];
 		const labels = ['SOLO / DUO', 'FLEX 5v5'];
 
-		const cardWidth = 300;
+		const cardWidth = 360;
+		const cardHeight = 320;
 		const startX = (width - (queues.length * cardWidth) - 40) / 2;
-		const startY = 80;
+		const startY = 100;
 
 		const TIER_COLORS = {
 			'IRON': '#A19D94', 'BRONZE': '#CD7F32', 'SILVER': '#C0C0C0',
@@ -504,18 +505,18 @@ class MatchImageGenerator {
 
 			// Card Bg
 			ctx.fillStyle = '#111519';
-			this.drawRoundedRect(ctx, x, y, cardWidth, 240, 10, true);
+			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 15, true);
 
 			// Border
 			ctx.strokeStyle = TIER_COLORS[tier] || '#333';
-			ctx.lineWidth = 3;
-			this.drawRoundedRect(ctx, x, y, cardWidth, 240, 10, false, true);
+			ctx.lineWidth = 5;
+			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 15, false, true);
 
 			// Label
 			ctx.fillStyle = '#9e9e9e';
-			ctx.font = `bold 18px ${fontFamily}`;
+			ctx.font = `bold 22px ${fontFamily}`;
 			ctx.textAlign = 'center';
-			ctx.fillText(labels[i], x + cardWidth / 2, y + 35);
+			ctx.fillText(labels[i], x + cardWidth / 2, y + 45);
 
 			// Tier Image
 			const tierName = tier.toLowerCase();
@@ -523,38 +524,38 @@ class MatchImageGenerator {
 				? 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-unranked.png'
 				: `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tierName}.png`;
 
+			const emblemSize = 180; // MUCH BIGGER
 			try {
 				const emblem = await this.loadImageCached(emblemUrl);
 				if (emblem) {
-					ctx.drawImage(emblem, x + cardWidth / 2 - 60, y + 45, 120, 120);
+					ctx.drawImage(emblem, x + (cardWidth - emblemSize) / 2, y + 55, emblemSize, emblemSize);
 				}
 			} catch (e) {
-				// Fallback if image fails
 				ctx.fillStyle = TIER_COLORS[tier];
 				ctx.beginPath();
-				ctx.arc(x + cardWidth / 2, y + 105, 40, 0, Math.PI * 2);
+				ctx.arc(x + cardWidth / 2, y + 145, 60, 0, Math.PI * 2);
 				ctx.fill();
 			}
 
 			// Tier Text
 			ctx.fillStyle = TIER_COLORS[tier] || '#fff';
-			ctx.font = `bold 24px ${fontFamily}`;
+			ctx.font = `bold 32px ${fontFamily}`;
 			if (rank) {
-				ctx.fillText(`${rank.tier} ${rank.rank}`, x + cardWidth / 2, y + 185);
+				ctx.fillText(`${rank.tier} ${rank.rank}`, x + cardWidth / 2, y + 245);
 				ctx.fillStyle = '#fff';
-				ctx.font = `18px ${fontFamily}`;
-				ctx.fillText(`${rank.leaguePoints} LP`, x + cardWidth / 2, y + 210);
+				ctx.font = `22px ${fontFamily}`;
+				ctx.fillText(`${rank.leaguePoints} LP`, x + cardWidth / 2, y + 275);
 
 				// Winrate
 				const total = rank.wins + rank.losses;
 				const wr = Math.round((rank.wins / total) * 100);
 				ctx.fillStyle = wr >= 50 ? '#2ecc71' : '#e74c3c';
-				ctx.font = `bold 14px ${fontFamily}`;
-				ctx.fillText(`${rank.wins}W - ${rank.losses}L (${wr}%)`, x + cardWidth / 2, y + 230);
+				ctx.font = `bold 18px ${fontFamily}`;
+				ctx.fillText(`${rank.wins}W - ${rank.losses}L (${wr}%)`, x + cardWidth / 2, y + 302);
 			} else {
 				ctx.fillStyle = '#555';
-				ctx.font = `bold 32px ${fontFamily}`;
-				ctx.fillText('UNRANKED', x + cardWidth / 2, y + 185);
+				ctx.font = `bold 42px ${fontFamily}`;
+				ctx.fillText('UNRANKED', x + cardWidth / 2, y + 245);
 			}
 		}
 
