@@ -689,6 +689,9 @@ class MatchImageGenerator {
 			if (id === "NunuWillump") id = "Nunu";
 			if (id === "Wukong") id = "MonkeyKing";
 			if (id === "LeBlanc") id = "Leblanc";
+			if (id === "Fiddlesticks") id = "Fiddlesticks"; // Just to match key exactly
+			if (id === "RenataGlasc") id = "Renata";
+			if (id === "BelVeth") id = "Belveth";
 
 			return this.loadImageCached(`${DDRAGON_BASE}/img/champion/${id}.png`);
 		}));

@@ -148,6 +148,7 @@ module.exports = {
 			if (targetChamp.name === "LeBlanc") champId = "Leblanc";
 			if (targetChamp.name === "Wukong") champId = "MonkeyKing";
 			if (targetChamp.name === "Nunu & Willump") champId = "Nunu";
+			if (targetChamp.name === "Fiddlesticks") champId = "Fiddlesticks"; // Ensure correct casing just in case
 
 			embed.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champId}.png`);
 		}

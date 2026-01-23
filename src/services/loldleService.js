@@ -36,6 +36,7 @@ class LoldleService {
 
 			if (parts.length < 8) continue;
 
+			// Special fix for champions with commas in their data if any (standard parsing should handle it but just in case)
 			const [championName, gender, positionsRaw, speciesRaw, resource, rangeTypeRaw, regionsRaw, releaseDate] = parts;
 
 			this.champions.push({
