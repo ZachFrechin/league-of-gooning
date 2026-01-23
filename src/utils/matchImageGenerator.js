@@ -40,7 +40,7 @@ class MatchImageGenerator {
 	/**
 	 * Generate a FULL match image with player stats AND both teams with items
 	 */
-	static async generateFullMatchImage(participant, win, score, allyTeam, enemyTeam) {
+	static async generateFullMatchImage(participant, win, score, allyTeam, enemyTeam, timelineData = null) {
 		const version = await this.getLatestVersion();
 		const DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${version}`;
 		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
@@ -49,22 +49,19 @@ class MatchImageGenerator {
 		const playerHeight = 190;
 		const teamRowHeight = 40;
 		const teamHeight = teamRowHeight * 5 + 40;
-		const height = playerHeight + teamHeight + 15;
+		const graphHeight = timelineData ? 140 : 0;
+		const height = playerHeight + teamHeight + graphHeight + (timelineData ? 25 : 15);
 
 		const canvas = createCanvas(width, height);
 		const ctx = canvas.getContext('2d');
 
 		// === PRELOAD ALL IMAGES IN PARALLEL ===
 		const allUrls = new Set();
-
-		// Player images
 		allUrls.add(`${DDRAGON_BASE}/img/champion/${participant.championName}.png`);
 		for (let i = 0; i <= 6; i++) {
 			const itemId = participant[`item${i}`];
 			if (itemId && itemId > 0) allUrls.add(`${DDRAGON_BASE}/img/item/${itemId}.png`);
 		}
-
-		// Team images (champions + items)
 		for (const p of [...allyTeam, ...enemyTeam]) {
 			allUrls.add(`${DDRAGON_BASE}/img/champion/${p.championName}.png`);
 			for (let i = 0; i <= 6; i++) {
@@ -72,8 +69,6 @@ class MatchImageGenerator {
 				if (itemId && itemId > 0) allUrls.add(`${DDRAGON_BASE}/img/item/${itemId}.png`);
 			}
 		}
-
-		// Load all at once
 		await Promise.all([...allUrls].map(url => this.loadImageCached(url)));
 
 		// === BACKGROUND ===
@@ -92,7 +87,6 @@ class MatchImageGenerator {
 		const champImg = await this.loadImageCached(`${DDRAGON_BASE}/img/champion/${participant.championName}.png`);
 		if (champImg) ctx.drawImage(champImg, 15, 15, 75, 75);
 
-		// Level badge (bottom-right corner of champion)
 		ctx.fillStyle = '#000000';
 		ctx.beginPath();
 		ctx.arc(82, 82, 16, 0, Math.PI * 2);
@@ -107,35 +101,30 @@ class MatchImageGenerator {
 		ctx.fillText(`${participant.champLevel}`, 82, 87);
 		ctx.textAlign = 'left';
 
-		// Champion name
 		ctx.fillStyle = '#ffffff';
 		ctx.font = `bold 22px ${fontFamily}`;
 		ctx.fillText(participant.championName || 'Unknown', 100, 38);
 
-		// KDA  
 		ctx.font = `18px ${fontFamily}`;
 		ctx.fillStyle = '#cccccc';
 		ctx.fillText(`${participant.kills}/${participant.deaths}/${participant.assists}`, 100, 62);
 
-		// Victory/Defeat badge
 		ctx.font = `bold 18px ${fontFamily}`;
 		ctx.fillStyle = win ? '#2ecc71' : '#e74c3c';
 		ctx.fillText(win ? 'VICTORY' : 'DEFEAT', 420, 38);
 
-		// Score bar
 		const scoreNum = Number.isFinite(score) ? Math.round(score) : 0;
 		ctx.fillStyle = '#222222';
 		ctx.fillRect(15, 100, 520, 25);
-		const scoreWidth = (scoreNum / 100) * 520;
+		const sWidth = (scoreNum / 100) * 520;
 		ctx.fillStyle = scoreNum >= 80 ? '#2ecc71' : scoreNum >= 60 ? '#f1c40f' : scoreNum >= 40 ? '#e67e22' : '#e74c3c';
-		if (scoreWidth > 0) ctx.fillRect(15, 100, scoreWidth, 25);
+		if (sWidth > 0) ctx.fillRect(15, 100, sWidth, 25);
 		ctx.fillStyle = '#ffffff';
 		ctx.font = `bold 13px ${fontFamily}`;
 		ctx.textAlign = 'center';
 		ctx.fillText(`${scoreNum}/100 Performance`, 275, 117);
 		ctx.textAlign = 'left';
 
-		// Player Items
 		const items = [participant.item0, participant.item1, participant.item2, participant.item3, participant.item4, participant.item5];
 		let itemX = 15;
 		for (const itemId of items) {
@@ -148,7 +137,6 @@ class MatchImageGenerator {
 			}
 			itemX += 47;
 		}
-		// Trinket
 		if (participant.item6 && participant.item6 > 0) {
 			const trinketImg = await this.loadImageCached(`${DDRAGON_BASE}/img/item/${participant.item6}.png`);
 			if (trinketImg) ctx.drawImage(trinketImg, itemX + 20, 135, 42, 42);
@@ -156,8 +144,6 @@ class MatchImageGenerator {
 
 		// === TEAMS SECTION ===
 		const teamsY = playerHeight + 5;
-
-		// Separator
 		ctx.strokeStyle = '#444444';
 		ctx.lineWidth = 1;
 		ctx.beginPath();
@@ -165,38 +151,27 @@ class MatchImageGenerator {
 		ctx.lineTo(width - 15, teamsY);
 		ctx.stroke();
 
-		// Team headers
 		ctx.font = `bold 11px ${fontFamily}`;
 		ctx.fillStyle = '#3498db';
 		ctx.fillText('YOUR TEAM', 20, teamsY + 18);
 		ctx.fillStyle = '#e74c3c';
 		ctx.fillText('ENEMY TEAM', 290, teamsY + 18);
 
-		// Draw teams side by side with mini items
 		let rowY = teamsY + 30;
 		const miniItemSize = 18;
 
 		for (let i = 0; i < 5; i++) {
-			// Ally player
 			if (allyTeam[i]) {
 				const p = allyTeam[i];
-				const isMe = p.puuid === participant.puuid;
-
-				if (isMe) {
+				if (p.puuid === participant.puuid) {
 					ctx.fillStyle = '#1a4a7c';
 					ctx.fillRect(15, rowY - 2, 255, teamRowHeight - 4);
 				}
-
-				// Champion icon
 				const cImg = await this.loadImageCached(`${DDRAGON_BASE}/img/champion/${p.championName}.png`);
 				if (cImg) ctx.drawImage(cImg, 20, rowY, 28, 28);
-
-				// KDA
 				ctx.fillStyle = '#ffffff';
 				ctx.font = `11px ${fontFamily}`;
 				ctx.fillText(`${p.kills}/${p.deaths}/${p.assists}`, 55, rowY + 18);
-
-				// Mini items (7 items incl. trinket)
 				let miniX = 110;
 				for (let j = 0; j < 7; j++) {
 					const itemId = p[`item${j}`];
@@ -207,21 +182,13 @@ class MatchImageGenerator {
 					miniX += miniItemSize + 2;
 				}
 			}
-
-			// Enemy player
 			if (enemyTeam[i]) {
 				const p = enemyTeam[i];
-
-				// Champion icon
 				const cImg = await this.loadImageCached(`${DDRAGON_BASE}/img/champion/${p.championName}.png`);
 				if (cImg) ctx.drawImage(cImg, 290, rowY, 28, 28);
-
-				// KDA
 				ctx.fillStyle = '#ffffff';
 				ctx.font = `11px ${fontFamily}`;
 				ctx.fillText(`${p.kills}/${p.deaths}/${p.assists}`, 325, rowY + 18);
-
-				// Mini items (7 items incl. trinket)
 				let miniX = 380;
 				for (let j = 0; j < 7; j++) {
 					const itemId = p[`item${j}`];
@@ -232,12 +199,99 @@ class MatchImageGenerator {
 					miniX += miniItemSize + 2;
 				}
 			}
-
 			rowY += teamRowHeight;
+		}
+
+		// === GOLD GRAPH SECTION ===
+		if (timelineData) {
+			const graphY = teamsY + teamHeight + 10;
+			this.drawGoldGraph(ctx, timelineData, participant.teamId, 15, graphY, width - 30, graphHeight, fontFamily);
 		}
 
 		return canvas.toBuffer('image/png');
 	}
+
+	static drawGoldGraph(ctx, timeline, playerTeamId, x, y, width, height, fontFamily) {
+		const frames = timeline.info.frames;
+		if (!frames || frames.length < 2) return;
+
+		// Calculate gold advantage for player's team at each frame
+		const advantageData = frames.map(frame => {
+			let playerTeamGold = 0;
+			let enemyTeamGold = 0;
+
+			for (const participantId in frame.participantFrames) {
+				const pFrame = frame.participantFrames[participantId];
+				// Participant IDs 1-5 are usually team 100, 6-10 are team 200
+				const teamId = parseInt(participantId) <= 5 ? 100 : 200;
+				if (teamId === playerTeamId) playerTeamGold += pFrame.totalGold;
+				else enemyTeamGold += pFrame.totalGold;
+			}
+			return playerTeamGold - enemyTeamGold;
+		});
+
+		const maxAdv = Math.max(...advantageData.map(Math.abs), 1000); // At least 1k scale
+		const padding = 20;
+		const drawW = width;
+		const drawH = height - padding * 2;
+		const centerY = y + padding + drawH / 2;
+
+		// Background for graph
+		ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+		this.drawRoundedRect(ctx, x, y, width, height, 10, true);
+
+		// Grid and Label
+		ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(x, centerY);
+		ctx.lineTo(x + width, centerY);
+		ctx.stroke();
+
+		ctx.fillStyle = '#9e9e9e';
+		ctx.font = `bold 10px ${fontFamily}`;
+		ctx.textAlign = 'left';
+		ctx.fillText('GOLD ADVANTAGE', x + 10, y + 15);
+
+		// Draw Advantage Curve
+		const stepX = drawW / (advantageData.length - 1);
+		ctx.beginPath();
+		ctx.lineWidth = 2;
+
+		for (let i = 0; i < advantageData.length; i++) {
+			const val = advantageData[i];
+			const posX = x + i * stepX;
+			// Scale: val / maxAdv = offset / (drawH/2)
+			const posY = centerY - (val / maxAdv) * (drawH / 2);
+
+			if (i === 0) ctx.moveTo(posX, posY);
+			else ctx.lineTo(posX, posY);
+		}
+
+		// Color the curve based on trend or result (here just blue/red gradient)
+		const graphGradient = ctx.createLinearGradient(x, y + padding, x, y + height - padding);
+		graphGradient.addColorStop(0, '#3498db'); // Ally advantage (top)
+		graphGradient.addColorStop(0.5, '#ffffff');
+		graphGradient.addColorStop(1, '#e74c3c'); // Enemy advantage (bottom)
+
+		ctx.strokeStyle = graphGradient;
+		ctx.stroke();
+
+		// Fill area under/above curve
+		ctx.lineTo(x + width, centerY);
+		ctx.lineTo(x, centerY);
+		ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+		ctx.fill();
+
+		// Final advantage text
+		const finalAdv = advantageData[advantageData.length - 1];
+		ctx.textAlign = 'right';
+		ctx.fillStyle = finalAdv >= 0 ? '#3498db' : '#e74c3c';
+		ctx.font = `bold 12px ${fontFamily}`;
+		const advText = finalAdv >= 0 ? `+${(finalAdv / 1000).toFixed(1)}k Ally` : `${(finalAdv / 1000).toFixed(1)}k Enemy`;
+		ctx.fillText(advText, x + width - 10, y + 15);
+	}
+
 	/**
 	 * Generate Mastery Image (Top 10)
 	 */
@@ -466,26 +520,26 @@ class MatchImageGenerator {
 	static async generateRanksImage(summonerName, ranks) {
 		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
 
-		const width = 850;
-		const height = 450;
+		const width = 1000;
+		const height = 550;
 		const canvas = createCanvas(width, height);
 		const ctx = canvas.getContext('2d');
 
-		// Background (Elegant dark gradient simulation)
+		// Background
 		ctx.fillStyle = '#1e2328';
 		ctx.fillRect(0, 0, width, height);
 
 		// Header
 		ctx.fillStyle = '#f0e6d2';
-		ctx.font = `bold 36px ${fontFamily}`;
+		ctx.font = `bold 42px ${fontFamily}`;
 		ctx.textAlign = 'center';
-		ctx.fillText(`RANKS - ${summonerName.toUpperCase()}`, width / 2, 55);
+		ctx.fillText(`RANKS - ${summonerName.toUpperCase()}`, width / 2, 60);
 
 		const queues = ['RANKED_SOLO_5x5', 'RANKED_FLEX_SR'];
 		const labels = ['SOLO / DUO', 'FLEX 5v5'];
 
-		const cardWidth = 360;
-		const cardHeight = 320;
+		const cardWidth = 420;
+		const cardHeight = 420;
 		const startX = (width - (queues.length * cardWidth) - 40) / 2;
 		const startY = 100;
 
@@ -505,18 +559,18 @@ class MatchImageGenerator {
 
 			// Card Bg
 			ctx.fillStyle = '#111519';
-			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 15, true);
+			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 20, true);
 
 			// Border
 			ctx.strokeStyle = TIER_COLORS[tier] || '#333';
-			ctx.lineWidth = 5;
-			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 15, false, true);
+			ctx.lineWidth = 6;
+			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 20, false, true);
 
 			// Label
 			ctx.fillStyle = '#9e9e9e';
-			ctx.font = `bold 22px ${fontFamily}`;
+			ctx.font = `bold 24px ${fontFamily}`;
 			ctx.textAlign = 'center';
-			ctx.fillText(labels[i], x + cardWidth / 2, y + 45);
+			ctx.fillText(labels[i], x + cardWidth / 2, y + 50);
 
 			// Tier Image
 			const tierName = tier.toLowerCase();
@@ -524,38 +578,51 @@ class MatchImageGenerator {
 				? 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-unranked.png'
 				: `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tierName}.png`;
 
-			const emblemSize = 180; // MUCH BIGGER
+			const maxEmblemSize = 280; // GIGANTIC
 			try {
 				const emblem = await this.loadImageCached(emblemUrl);
 				if (emblem) {
-					ctx.drawImage(emblem, x + (cardWidth - emblemSize) / 2, y + 55, emblemSize, emblemSize);
+					// Maintain aspect ratio to avoid squashing
+					const ratio = emblem.width / emblem.height;
+					let drawW = maxEmblemSize;
+					let drawH = maxEmblemSize / ratio;
+
+					if (drawH > maxEmblemSize) {
+						drawH = maxEmblemSize;
+						drawW = maxEmblemSize * ratio;
+					}
+
+					// Center emblem area (y+60 to y+300)
+					const centerX = x + cardWidth / 2;
+					const centerY = y + 180;
+					ctx.drawImage(emblem, centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
 				}
 			} catch (e) {
 				ctx.fillStyle = TIER_COLORS[tier];
 				ctx.beginPath();
-				ctx.arc(x + cardWidth / 2, y + 145, 60, 0, Math.PI * 2);
+				ctx.arc(x + cardWidth / 2, y + 170, 70, 0, Math.PI * 2);
 				ctx.fill();
 			}
 
 			// Tier Text
 			ctx.fillStyle = TIER_COLORS[tier] || '#fff';
-			ctx.font = `bold 32px ${fontFamily}`;
+			ctx.font = `bold 38px ${fontFamily}`;
 			if (rank) {
-				ctx.fillText(`${rank.tier} ${rank.rank}`, x + cardWidth / 2, y + 245);
+				ctx.fillText(`${rank.tier} ${rank.rank}`, x + cardWidth / 2, y + 330);
 				ctx.fillStyle = '#fff';
-				ctx.font = `22px ${fontFamily}`;
-				ctx.fillText(`${rank.leaguePoints} LP`, x + cardWidth / 2, y + 275);
+				ctx.font = `24px ${fontFamily}`;
+				ctx.fillText(`${rank.leaguePoints} LP`, x + cardWidth / 2, y + 365);
 
 				// Winrate
 				const total = rank.wins + rank.losses;
 				const wr = Math.round((rank.wins / total) * 100);
 				ctx.fillStyle = wr >= 50 ? '#2ecc71' : '#e74c3c';
-				ctx.font = `bold 18px ${fontFamily}`;
-				ctx.fillText(`${rank.wins}W - ${rank.losses}L (${wr}%)`, x + cardWidth / 2, y + 302);
+				ctx.font = `bold 20px ${fontFamily}`;
+				ctx.fillText(`${rank.wins}W - ${rank.losses}L (${wr}%)`, x + cardWidth / 2, y + 395);
 			} else {
 				ctx.fillStyle = '#555';
-				ctx.font = `bold 42px ${fontFamily}`;
-				ctx.fillText('UNRANKED', x + cardWidth / 2, y + 245);
+				ctx.font = `bold 48px ${fontFamily}`;
+				ctx.fillText('UNRANKED', x + cardWidth / 2, y + 330);
 			}
 		}
 

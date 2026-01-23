@@ -33,9 +33,10 @@ module.exports = {
 			const account = await riotApi.getAccountByRiotId(gameName, tagLine);
 			console.log(`[/match] Got account PUUID`);
 
-			// Fetch match data
+			// Fetch match data and timeline
 			const matchData = await riotApi.getMatchDetails(matchId);
-			console.log(`[/match] Got match data`);
+			const timelineData = await riotApi.getMatchTimeline(matchId);
+			console.log(`[/match] Got match data and timeline`);
 
 			if (!matchData) {
 				return await interaction.editReply({
@@ -82,12 +83,12 @@ module.exports = {
 			const playerTeam = allParticipants.filter(p => p.teamId === participant.teamId);
 			const enemyTeam = allParticipants.filter(p => p.teamId !== participant.teamId);
 
-			// Generate FULL match image (player + teams)
+			// Generate FULL match image (player + teams + timeline)
 			const files = [];
 			try {
 				console.log(`[/match] Generating full match image...`);
 				const matchImageBuffer = await MatchImageGenerator.generateFullMatchImage(
-					participant, participant.win, score, playerTeam, enemyTeam
+					participant, participant.win, score, playerTeam, enemyTeam, timelineData
 				);
 				files.push(new AttachmentBuilder(matchImageBuffer, { name: 'match-summary.png' }));
 				console.log(`[/match] Full match image generated`);

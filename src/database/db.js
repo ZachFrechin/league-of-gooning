@@ -90,11 +90,17 @@ class DatabaseManager {
         discord_user_id TEXT NOT NULL,
         current_streak INTEGER DEFAULT 0,
         best_streak INTEGER DEFAULT 0,
+        best_guesses INTEGER DEFAULT 999,
         total_solved INTEGER DEFAULT 0,
         last_solved_date TEXT,
         PRIMARY KEY (guild_id, discord_user_id)
       );
     `);
+
+    // Migration for best_guesses
+    try {
+      this.db.exec(`ALTER TABLE loldle_stats ADD COLUMN best_guesses INTEGER DEFAULT 999;`);
+    } catch (e) { }
 
     // Migration: Add summoner_id column if it doesn't exist
     try {
@@ -491,7 +497,7 @@ class DatabaseManager {
         INSERT INTO loldle_stats (guild_id, discord_user_id) VALUES (?, ?)
       `);
       init.run(guildId, discordUserId);
-      return { current_streak: 0, best_streak: 0, total_solved: 0, last_solved_date: null };
+      return { current_streak: 0, best_streak: 0, best_guesses: 999, total_solved: 0, last_solved_date: null };
     }
 
     // Check if streak is broken (if last_solved_date is more than 1 day old)
@@ -515,7 +521,7 @@ class DatabaseManager {
     return stats;
   }
 
-  incrementLoldleStats(guildId, discordUserId) {
+  incrementLoldleStats(guildId, discordUserId, attempts) {
     const today = new Date().toISOString().split('T')[0];
     const stats = this.getLoldleStats(guildId, discordUserId);
 
@@ -523,17 +529,19 @@ class DatabaseManager {
     if (stats.last_solved_date === today) return;
 
     const newStreak = stats.current_streak + 1;
-    const newBest = Math.max(stats.best_streak, newStreak);
+    const newBestStreak = Math.max(stats.best_streak, newStreak);
+    const newBestGuesses = Math.min(stats.best_guesses || 999, attempts);
 
     const stmt = this.db.prepare(`
       UPDATE loldle_stats
       SET current_streak = ?,
           best_streak = ?,
+          best_guesses = ?,
           total_solved = total_solved + 1,
           last_solved_date = ?
       WHERE guild_id = ? AND discord_user_id = ?
     `);
-    return stmt.run(newStreak, newBest, today, guildId, discordUserId);
+    return stmt.run(newStreak, newBestStreak, newBestGuesses, today, guildId, discordUserId);
   }
 
   resetAllPlayerElo(guildId) {

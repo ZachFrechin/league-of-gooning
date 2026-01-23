@@ -368,7 +368,7 @@ class MatchFormatter {
     return `${emoji} ${rank.tier} ${rank.rank} - ${rank.leaguePoints} LP`;
   }
 
-  static async formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null, eloChange = 0, currentElo = 1000, currentStreak = 0) {
+  static async formatMatchResult(matchData, playerStats, gameName, tagLine, rankedInfo = null, eloChange = 0, currentElo = 1000, currentStreak = 0, timelineData = null) {
     const { participant, gameDuration, isRemake, gameMode, queueId } = playerStats;
     const allParticipants = matchData.info.participants;
     const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
@@ -412,7 +412,7 @@ class MatchFormatter {
     let files = [];
     try {
       const imageBuffer = await MatchImageGenerator.generateFullMatchImage(
-        participant, participant.win, score, playerTeam, enemyTeam
+        participant, participant.win, score, playerTeam, enemyTeam, timelineData
       );
       files.push(new AttachmentBuilder(imageBuffer, { name: 'match-summary.png' }));
     } catch (err) {

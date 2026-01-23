@@ -172,6 +172,9 @@ class MatchTracker {
       // Get updated ELO for display
       const playerElo = this.database.getPlayerElo(account.guild_id, account.puuid);
 
+      // Fetch timeline for gold advantage graph
+      const timelineData = await this.riotApi.getMatchTimeline(latestMatchId);
+
       const message = await MatchFormatter.formatMatchResult(
         matchData,
         playerStats,
@@ -180,7 +183,8 @@ class MatchTracker {
         rankedInfo,
         eloChange,
         playerElo?.elo || 1000,
-        playerElo?.current_streak || 0  // Pass streak
+        playerElo?.current_streak || 0,
+        timelineData
       );
 
       await channel.send({

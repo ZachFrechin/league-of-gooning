@@ -83,6 +83,19 @@ class RiotAPI {
     }
   }
 
+  async getMatchTimeline(matchId) {
+    try {
+      const url = `https://${this.routing}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(matchId)}/timeline`;
+      const response = await axios.get(url, {
+        headers: { 'X-Riot-Token': this.apiKey }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch match timeline for ${matchId}:`, error.message);
+      return null;
+    }
+  }
+
   async getRankedInfo(summonerId, regionOverride = null) {
     const region = this.normalizeRegion(regionOverride || this.region);
     const url = `https://${region}.api.riotgames.com/lol/league/v4/entries/by-summoner/${encodeURIComponent(summonerId)}`;

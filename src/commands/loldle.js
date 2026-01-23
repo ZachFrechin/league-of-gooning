@@ -59,11 +59,16 @@ module.exports = {
 
 			// Check if correct
 			if (guessChamp.name === targetChamp.name) {
+				const attempts = guesses.length;
+				const statsBefore = database.getLoldleStats(guildId, discordUserId);
+				const isNewRecord = attempts < (statsBefore.best_guesses || 999);
+
 				database.markLoldleSolved(guildId, discordUserId);
-				database.incrementLoldleStats(guildId, discordUserId);
+				database.incrementLoldleStats(guildId, discordUserId, attempts);
+
+				const statsAfter = database.getLoldleStats(guildId, discordUserId);
 
 				// Reward
-				const attempts = guesses.length;
 				const reward = Math.max(10, 50 - (attempts - 1) * 5);
 				const linkedAccount = database.getAccountByDiscordId(guildId, discordUserId);
 
@@ -75,34 +80,30 @@ module.exports = {
 					rewardText = `\n⚠️ Pas de compte lié = Pas d'ELO gagné (/link).`;
 				}
 
-				// For public victory, we only show the winning guess (as requested)
-				const winningGuess = [loldleService.compare(guessChamp.name, targetChamp)];
-				const imageBuffer = await MatchImageGenerator.generateLoldleImage(winningGuess);
-				const attachment = new AttachmentBuilder(imageBuffer, { name: 'loldle-victory.png' });
+				// Generate result for winner (Private)
+				const { embed: winnerEmbed, attachment: winnerAttachment } = await this.generateResult(guesses, targetChamp, true, database, discordUserId, guildId);
+				winnerEmbed.setTitle('🎉 Félicitations ! Tu as trouvé !')
+					.setDescription(`C'était bien **${targetChamp.name}** !\n\nTentatives: **${attempts}**\nStreak Actuelle: \`${statsAfter.current_streak}\` jours\nRecord Personnel: \`${statsAfter.best_guesses}\` essais\n${rewardText}`);
 
-				const stats = database.getLoldleStats(guildId, discordUserId);
-				const streakText = `\`Current Score: ${stats.current_streak}\` \`Best Score: ${stats.best_streak}\``;
-
-				const victoryEmbed = new EmbedBuilder()
-					.setTitle('🎉 LoLdle du Jour : Victoire !')
-					.setColor('#2ECC71')
-					.setDescription(`<@${discordUserId}> a trouvé le champion **${targetChamp.name}** en **${attempts}** tentatives !\n${streakText}${rewardText}`)
-					.setImage('attachment://loldle-victory.png')
+				// Announcement (Public - No Spoilers)
+				const announcementEmbed = new EmbedBuilder()
+					.setTitle('🧩 LoLdle du Jour : Un champion a été trouvé !')
+					.setColor('#F1C40F')
+					.setDescription(`<@${discordUserId}> a trouvé le champion du jour en **${attempts}** tentatives ! 🏆`)
+					.addFields(
+						{ name: '🔥 Streak', value: `\`${statsAfter.current_streak}\` jours`, inline: true },
+						{ name: '⭐ Record', value: isNewRecord ? `✨ **NOUVEAU !!** (**${attempts}**)` : `\`${statsAfter.best_guesses}\` essais`, inline: true }
+					)
+					.setFooter({ text: 'Teste tes connaissances avec /loldle' })
 					.setTimestamp();
 
-				// Clean name for DDragon
-				let champId = targetChamp.name.replace(/[^a-zA-Z]/g, '');
-				if (targetChamp.name === "LeBlanc") champId = "Leblanc";
-				if (targetChamp.name === "Wukong") champId = "MonkeyKing";
-				if (targetChamp.name === "Nunu & Willump") champId = "Nunu";
-				const version = await MatchImageGenerator.getLatestVersion();
-				victoryEmbed.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champId}.png`);
+				// Send public announcement
+				await interaction.channel.send({ embeds: [announcementEmbed] });
 
-				// Send public message
-				await interaction.channel.send({ embeds: [victoryEmbed], files: [attachment] });
-
+				// Send private result to user
 				return await interaction.editReply({
-					content: `✅ Félicitations ! Tu as trouvé **${targetChamp.name}**. La victoire a été annoncée dans le salon !`
+					embeds: [winnerEmbed],
+					files: winnerAttachment ? [winnerAttachment] : []
 				});
 			}
 		}
