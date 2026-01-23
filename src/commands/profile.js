@@ -8,20 +8,34 @@ module.exports = {
 		.addStringOption(option =>
 			option.setName('gamename')
 				.setDescription('Game Name (without tag)')
-				.setRequired(true))
+				.setRequired(false))
 		.addStringOption(option =>
 			option.setName('tag')
 				.setDescription('Tag Line (e.g., EUW, NA1)')
-				.setRequired(true)),
+				.setRequired(false)),
 
 	async execute(interaction, database) {
 		await interaction.deferReply();
 
 		const guildId = interaction.guildId;
-		const gameName = interaction.options.getString('gamename');
-		const tagLine = interaction.options.getString('tag');
+		const discordUserId = interaction.user.id;
+		let gameName = interaction.options.getString('gamename');
+		let tagLine = interaction.options.getString('tag');
 
 		try {
+			// If not provided, try to get linked account
+			if (!gameName || !tagLine) {
+				const linkedAccount = database.getAccountByDiscordId(guildId, discordUserId);
+				if (!linkedAccount) {
+					return await interaction.editReply({
+						content: `❌ Tu n'as pas de compte lié. Utilise \`/link\` pour lier ton compte ou précise un nom et un tag (\`/profile gamename:Nom tag:Tag\`).`,
+						ephemeral: true
+					});
+				}
+				gameName = linkedAccount.game_name;
+				tagLine = linkedAccount.tag_line;
+			}
+
 			// Find the tracked account
 			const trackedAccount = database.getTrackedAccount(guildId, gameName, tagLine);
 

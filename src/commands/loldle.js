@@ -60,6 +60,7 @@ module.exports = {
 			// Check if correct
 			if (guessChamp.name === targetChamp.name) {
 				database.markLoldleSolved(guildId, discordUserId);
+				database.incrementLoldleStats(guildId, discordUserId);
 
 				// Reward
 				const attempts = guesses.length;
@@ -74,16 +75,39 @@ module.exports = {
 					rewardText = `\n⚠️ Pas de compte lié = Pas d'ELO gagné (/link).`;
 				}
 
-				const { embed, attachment } = await this.generateResult(guesses, targetChamp, true);
+				// For public victory, we only show the winning guess (as requested)
+				const winningGuess = [loldleService.compare(guessChamp.name, targetChamp)];
+				const imageBuffer = await MatchImageGenerator.generateLoldleImage(winningGuess);
+				const attachment = new AttachmentBuilder(imageBuffer, { name: 'loldle-victory.png' });
+
+				const stats = database.getLoldleStats(guildId, discordUserId);
+				const streakText = `\`Current Score: ${stats.current_streak}\` \`Best Score: ${stats.best_streak}\``;
+
+				const victoryEmbed = new EmbedBuilder()
+					.setTitle('🎉 LoLdle du Jour : Victoire !')
+					.setColor('#2ECC71')
+					.setDescription(`<@${discordUserId}> a trouvé le champion **${targetChamp.name}** en **${attempts}** tentatives !\n${streakText}${rewardText}`)
+					.setImage('attachment://loldle-victory.png')
+					.setTimestamp();
+
+				// Clean name for DDragon
+				let champId = targetChamp.name.replace(/[^a-zA-Z]/g, '');
+				if (targetChamp.name === "LeBlanc") champId = "Leblanc";
+				if (targetChamp.name === "Wukong") champId = "MonkeyKing";
+				if (targetChamp.name === "Nunu & Willump") champId = "Nunu";
+				const version = await MatchImageGenerator.getLatestVersion();
+				victoryEmbed.setThumbnail(`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champId}.png`);
+
+				// Send public message
+				await interaction.channel.send({ embeds: [victoryEmbed], files: [attachment] });
+
 				return await interaction.editReply({
-					content: `🎉 **VICTOIRE!** C'était bien **${targetChamp.name}**!${rewardText}`,
-					embeds: [embed],
-					files: attachment ? [attachment] : []
+					content: `✅ Félicitations ! Tu as trouvé **${targetChamp.name}**. La victoire a été annoncée dans le salon !`
 				});
 			}
 		}
 
-		const { embed, attachment } = await this.generateResult(guesses, targetChamp, userStatus.solved);
+		const { embed, attachment } = await this.generateResult(guesses, targetChamp, userStatus.solved, database, discordUserId, guildId);
 
 		await interaction.editReply({
 			embeds: [embed],
@@ -91,11 +115,14 @@ module.exports = {
 		});
 	},
 
-	async generateResult(guesses, targetChamp, isSolved) {
+	async generateResult(guesses, targetChamp, isSolved, database, discordUserId, guildId) {
+		const stats = database.getLoldleStats(guildId, discordUserId);
+		const streakText = `\`Current Score: ${stats.current_streak}\` \`Best Score: ${stats.best_streak}\``;
+
 		const embed = new EmbedBuilder()
 			.setTitle('🧩 LoLdle du Jour - Mode Classique')
 			.setColor(isSolved ? '#2ECC71' : '#3498DB')
-			.setDescription(guesses.length > 0 ? `Tentatives: **${guesses.length}**` : 'Devine le champion en tapant son nom avec la commande `/loldle` !')
+			.setDescription(`${streakText}\n\n${guesses.length > 0 ? `Tentatives: **${guesses.length}**` : 'Devine le champion en tapant son nom avec la commande `/loldle` !'}`)
 			.setTimestamp();
 
 		let attachment = null;
@@ -110,11 +137,6 @@ module.exports = {
 				embed.setImage('attachment://loldle-history.png');
 			}
 		}
-
-		embed.addFields({
-			name: 'Légende',
-			value: '🚻 Gen | 📍 Pos | 🧬 Spe | 💧 Res | 📏 Ran | 🌍 Reg | 📅 An'
-		});
 
 		if (isSolved) {
 			const version = await MatchImageGenerator.getLatestVersion();

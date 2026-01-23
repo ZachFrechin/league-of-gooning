@@ -44,6 +44,16 @@ module.exports = {
 					const details = await riotApi.getMatchDetails(matchId);
 					const participant = details.info.participants.find(p => p.puuid === account.puuid);
 					if (!participant) return null;
+
+					// Localized Queue Name
+					let gameMode = details.info.gameMode;
+					const queueId = details.info.queueId;
+					if (queueId === 420) gameMode = 'RANKED SOLO';
+					else if (queueId === 440) gameMode = 'RANKED FLEX';
+					else if (queueId === 450) gameMode = 'ARAM';
+					else if (queueId === 400 || queueId === 430) gameMode = 'NORMAL';
+					else if (queueId === 1700) gameMode = 'ARENA';
+
 					return {
 						kills: participant.kills,
 						deaths: participant.deaths,
@@ -53,8 +63,12 @@ module.exports = {
 						win: participant.win,
 						gameDuration: details.info.gameDuration,
 						gameEndTimestamp: details.info.gameEndTimestamp,
-						gameMode: details.info.gameMode,
-						items: [participant.item0, participant.item1, participant.item2] // Just first 3 for simplicity or preloading
+						gameMode: gameMode,
+						items: [
+							participant.item0, participant.item1, participant.item2,
+							participant.item3, participant.item4, participant.item5,
+							participant.item6
+						]
 					};
 				} catch (e) {
 					return null;

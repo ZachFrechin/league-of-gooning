@@ -326,9 +326,9 @@ class MatchImageGenerator {
 		const DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${version}`;
 		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
 
-		const width = 800;
-		const rowHeight = 70;
-		const headerHeight = 60;
+		const width = 950; // WIDER
+		const rowHeight = 85; // TALLER
+		const headerHeight = 70;
 		const height = headerHeight + (matches.length * rowHeight) + 20;
 
 		const canvas = createCanvas(width, height);
@@ -340,78 +340,105 @@ class MatchImageGenerator {
 
 		// Header
 		ctx.fillStyle = '#f0e6d2';
-		ctx.font = `bold 28px ${fontFamily}`;
+		ctx.font = `bold 32px ${fontFamily}`;
 		ctx.textAlign = 'center';
-		ctx.fillText(`MATCH HISTORY - ${summonerName.toUpperCase()}`, width / 2, 40);
+		ctx.fillText(`MATCH HISTORY - ${summonerName.toUpperCase()}`, width / 2, 45);
 
-		// Preload Champion Images
-		const images = await Promise.all(matches.map(async (m) => {
-			if (!m.championName) return null;
-			return this.loadImageCached(`${DDRAGON_BASE}/img/champion/${m.championName}.png`);
-		}));
+		// PRELOAD ALL IMAGES
+		const champUrls = matches.map(m => `${DDRAGON_BASE}/img/champion/${m.championName}.png`);
+		const itemUrls = new Set();
+		matches.forEach(m => {
+			if (m.items) {
+				m.items.forEach(id => {
+					if (id > 0) itemUrls.add(`${DDRAGON_BASE}/img/item/${id}.png`);
+				});
+			}
+		});
+
+		await Promise.all([
+			...champUrls.map(url => this.loadImageCached(url)),
+			...([...itemUrls].map(url => this.loadImageCached(url)))
+		]);
 
 		ctx.textAlign = 'left';
 
-		matches.forEach((m, i) => {
+		for (let i = 0; i < matches.length; i++) {
+			const m = matches[i];
 			const y = headerHeight + (i * rowHeight);
-			const x = 20;
-			const img = images[i];
+			const x = 25;
 
 			// Row Background (Win/Loss tint)
-			ctx.fillStyle = m.win ? 'rgba(46, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)';
-			ctx.fillRect(x, y, width - 40, rowHeight - 5);
+			ctx.fillStyle = m.win ? 'rgba(46, 204, 113, 0.15)' : 'rgba(231, 76, 60, 0.15)';
+			ctx.fillRect(x, y, width - 50, rowHeight - 8);
 
 			// Sidebar color
 			ctx.fillStyle = m.win ? '#2ECC71' : '#E74C3C';
-			ctx.fillRect(x, y, 5, rowHeight - 5);
+			ctx.fillRect(x, y, 6, rowHeight - 8);
 
 			// Champion Image
-			if (img) {
-				ctx.drawImage(img, x + 15, y + 5, 55, 55);
+			const champImg = await this.loadImageCached(`${DDRAGON_BASE}/img/champion/${m.championName}.png`);
+			if (champImg) {
+				ctx.drawImage(champImg, x + 20, y + 10, 60, 60);
 			}
 
 			// Champion Level Badge
 			ctx.fillStyle = '#1e2328';
 			ctx.beginPath();
-			ctx.arc(x + 60, y + 50, 10, 0, Math.PI * 2);
+			ctx.arc(x + 72, y + 62, 12, 0, Math.PI * 2);
 			ctx.fill();
 			ctx.fillStyle = '#ffffff';
-			ctx.font = `bold 10px ${fontFamily}`;
+			ctx.font = `bold 12px ${fontFamily}`;
 			ctx.textAlign = 'center';
-			ctx.fillText(m.champLevel || '?', x + 60, y + 54);
+			ctx.fillText(m.champLevel || '?', x + 72, y + 66);
 
 			// KDA
 			ctx.textAlign = 'left';
 			ctx.fillStyle = '#ffffff';
-			ctx.font = `bold 18px ${fontFamily}`;
-			const kdaText = `${m.kills}/${m.deaths}/${m.assists}`;
-			ctx.fillText(kdaText, x + 90, y + 30);
+			ctx.font = `bold 22px ${fontFamily}`;
+			const kdaText = `${m.kills} / ${m.deaths} / ${m.assists}`;
+			ctx.fillText(kdaText, x + 100, y + 38);
 
 			// KDA Ratio
 			ctx.fillStyle = '#bdc3c7';
-			ctx.font = `12px ${fontFamily}`;
+			ctx.font = `14px ${fontFamily}`;
 			const kdaRatio = m.deaths === 0 ? 'Perfect' : ((m.kills + m.assists) / m.deaths).toFixed(2);
-			ctx.fillText(`${kdaRatio} KDA`, x + 90, y + 50);
+			ctx.fillText(`${kdaRatio} KDA`, x + 100, y + 60);
+
+			// Items
+			if (m.items) {
+				let itemX = x + 280;
+				const itemSize = 34;
+				for (let j = 0; j < 6; j++) {
+					const itemId = m.items[j];
+					if (itemId > 0) {
+						const iImg = await this.loadImageCached(`${DDRAGON_BASE}/img/item/${itemId}.png`);
+						if (iImg) ctx.drawImage(iImg, itemX, y + 23, itemSize, itemSize);
+					} else {
+						ctx.fillStyle = 'rgba(0,0,0,0.3)';
+						ctx.fillRect(itemX, y + 23, itemSize, itemSize);
+					}
+					itemX += itemSize + 4;
+				}
+				// Trinket with a small gap
+				const trinketId = m.items[6];
+				if (trinketId > 0) {
+					const tImg = await this.loadImageCached(`${DDRAGON_BASE}/img/item/${trinketId}.png`);
+					if (tImg) ctx.drawImage(tImg, itemX + 8, y + 23, itemSize, itemSize);
+				}
+			}
 
 			// Mode & Date
 			ctx.textAlign = 'right';
 			ctx.fillStyle = '#ffffff';
-			ctx.font = `bold 14px ${fontFamily}`;
-			ctx.fillText(m.gameMode || 'RANKED', width - 40, y + 25);
+			ctx.font = `bold 18px ${fontFamily}`;
+			ctx.fillText(m.gameMode || 'UNKNOWN', width - 45, y + 35);
 
 			ctx.fillStyle = '#95a5a6';
-			ctx.font = `12px ${fontFamily}`;
+			ctx.font = `14px ${fontFamily}`;
 			const date = new Date(m.gameEndTimestamp).toLocaleDateString('fr-FR');
 			const duration = `${Math.floor(m.gameDuration / 60)}m ${m.gameDuration % 60}s`;
-			ctx.fillText(`${date} • ${duration}`, width - 40, y + 45);
-
-			// Items (Miniatures) - Display first 3 items
-			if (m.items) {
-				// We assume items are preloaded or we skip them for speed. 
-				// For now simpler version without items or we need more preloading.
-				// Let's skip items for this version to keep it fast.
-			}
-		});
+			ctx.fillText(`${date} • ${duration}`, width - 45, y + 58);
+		}
 
 		return canvas.toBuffer('image/png');
 	}

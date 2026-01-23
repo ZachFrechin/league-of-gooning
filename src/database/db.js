@@ -84,6 +84,16 @@ class DatabaseManager {
         champion_name TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS loldle_stats (
+        guild_id TEXT NOT NULL,
+        discord_user_id TEXT NOT NULL,
+        current_streak INTEGER DEFAULT 0,
+        best_streak INTEGER DEFAULT 0,
+        total_solved INTEGER DEFAULT 0,
+        last_solved_date TEXT,
+        PRIMARY KEY (guild_id, discord_user_id)
+      );
     `);
 
     // Migration: Add summoner_id column if it doesn't exist
@@ -453,6 +463,61 @@ class DatabaseManager {
       VALUES (?, ?, ?, ?)
     `);
     return stmt.run(guildId, discordUserId, today, championName);
+  }
+
+  getLoldleStats(guildId, discordUserId) {
+    const stmt = this.db.prepare('SELECT * FROM loldle_stats WHERE guild_id = ? AND discord_user_id = ?');
+    let stats = stmt.get(guildId, discordUserId);
+
+    if (!stats) {
+      // Initialize stats
+      const init = this.db.prepare(`
+        INSERT INTO loldle_stats (guild_id, discord_user_id) VALUES (?, ?)
+      `);
+      init.run(guildId, discordUserId);
+      return { current_streak: 0, best_streak: 0, total_solved: 0, last_solved_date: null };
+    }
+
+    // Check if streak is broken (if last_solved_date is more than 1 day old)
+    if (stats.last_solved_date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const last = new Date(stats.last_solved_date);
+      last.setHours(0, 0, 0, 0);
+
+      const diffTime = Math.abs(today - last);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 1) {
+        // Streak broken
+        const reset = this.db.prepare('UPDATE loldle_stats SET current_streak = 0 WHERE guild_id = ? AND discord_user_id = ?');
+        reset.run(guildId, discordUserId);
+        stats.current_streak = 0;
+      }
+    }
+
+    return stats;
+  }
+
+  incrementLoldleStats(guildId, discordUserId) {
+    const today = new Date().toISOString().split('T')[0];
+    const stats = this.getLoldleStats(guildId, discordUserId);
+
+    // Only increment if not already solved today
+    if (stats.last_solved_date === today) return;
+
+    const newStreak = stats.current_streak + 1;
+    const newBest = Math.max(stats.best_streak, newStreak);
+
+    const stmt = this.db.prepare(`
+      UPDATE loldle_stats
+      SET current_streak = ?,
+          best_streak = ?,
+          total_solved = total_solved + 1,
+          last_solved_date = ?
+      WHERE guild_id = ? AND discord_user_id = ?
+    `);
+    return stmt.run(newStreak, newBest, today, guildId, discordUserId);
   }
 
   resetAllPlayerElo(guildId) {
