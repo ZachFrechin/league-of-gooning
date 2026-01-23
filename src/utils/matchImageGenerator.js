@@ -238,6 +238,269 @@ class MatchImageGenerator {
 
 		return canvas.toBuffer('image/png');
 	}
+	/**
+	 * Generate Mastery Image (Top 10)
+	 */
+	static async generateMasteryImage(summonerName, masteries) {
+		const version = await this.getLatestVersion();
+		const DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${version}`;
+		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
+
+		const width = 800;
+		const height = 450;
+		const canvas = createCanvas(width, height);
+		const ctx = canvas.getContext('2d');
+
+		// Background
+		ctx.fillStyle = '#1e2328';
+		ctx.fillRect(0, 0, width, height);
+
+		// Header
+		ctx.fillStyle = '#f0e6d2';
+		ctx.font = `bold 28px ${fontFamily}`;
+		ctx.textAlign = 'center';
+		ctx.fillText(`TOP MASTERIES - ${summonerName.toUpperCase()}`, width / 2, 40);
+
+		// Grid Layout
+		const startX = 20;
+		const startY = 70;
+		const cardWidth = 140;
+		const cardHeight = 170;
+		const gapX = 15;
+		const gapY = 20;
+
+		const top10 = masteries.slice(0, 10);
+
+		// Preload images
+		const images = await Promise.all(top10.map(async (m) => {
+			// Find champion name from ID (requires a mapping, or ddragon full data)
+			// For simplicity assuming passed object has 'championName' or we fetch it.
+			// Riot API masteries only give championId. We need to fetch champion data or use DDragon.
+			// Ideally the caller passes enriched data. Let's assume 'championName' is present.
+			if (!m.championName) return null;
+			return this.loadImageCached(`${DDRAGON_BASE}/img/champion/${m.championName}.png`);
+		}));
+
+		ctx.textAlign = 'center';
+
+		top10.forEach((m, i) => {
+			const x = startX + (i % 5) * (cardWidth + gapX);
+			const y = startY + Math.floor(i / 5) * (cardHeight + gapY);
+			const img = images[i];
+
+			// Card Background
+			ctx.fillStyle = '#0f1419';
+			ctx.fillRect(x, y, cardWidth, cardHeight);
+			ctx.strokeStyle = '#c8aa6e'; // Gold border
+			ctx.lineWidth = 1;
+			ctx.strokeRect(x, y, cardWidth, cardHeight);
+
+			// Champion Image
+			if (img) {
+				ctx.drawImage(img, x + 10, y + 10, 120, 120);
+			}
+
+			// Points
+			ctx.fillStyle = '#ffffff';
+			ctx.font = `bold 16px ${fontFamily}`;
+			ctx.fillText(new Intl.NumberFormat('en-US', { notation: "compact" }).format(m.championPoints), x + cardWidth / 2, y + 150);
+
+			// Level Badge (Overlay)
+			ctx.fillStyle = '#0AC8B9'; // Hextech Blue
+			ctx.beginPath();
+			ctx.arc(x + cardWidth - 25, y + 30, 15, 0, Math.PI * 2);
+			ctx.fill();
+
+			ctx.fillStyle = '#000000';
+			ctx.font = `bold 14px ${fontFamily}`;
+			ctx.fillText(m.championLevel, x + cardWidth - 25, y + 35);
+		});
+
+		return canvas.toBuffer('image/png');
+	}
+	/**
+ * Generate Match History Image (Last 10)
+ */
+	static async generateHistoryImage(summonerName, matches) {
+		const version = await this.getLatestVersion();
+		const DDRAGON_BASE = `https://ddragon.leagueoflegends.com/cdn/${version}`;
+		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
+
+		const width = 800;
+		const rowHeight = 70;
+		const headerHeight = 60;
+		const height = headerHeight + (matches.length * rowHeight) + 20;
+
+		const canvas = createCanvas(width, height);
+		const ctx = canvas.getContext('2d');
+
+		// Background
+		ctx.fillStyle = '#1e2328';
+		ctx.fillRect(0, 0, width, height);
+
+		// Header
+		ctx.fillStyle = '#f0e6d2';
+		ctx.font = `bold 28px ${fontFamily}`;
+		ctx.textAlign = 'center';
+		ctx.fillText(`MATCH HISTORY - ${summonerName.toUpperCase()}`, width / 2, 40);
+
+		// Preload Champion Images
+		const images = await Promise.all(matches.map(async (m) => {
+			if (!m.championName) return null;
+			return this.loadImageCached(`${DDRAGON_BASE}/img/champion/${m.championName}.png`);
+		}));
+
+		ctx.textAlign = 'left';
+
+		matches.forEach((m, i) => {
+			const y = headerHeight + (i * rowHeight);
+			const x = 20;
+			const img = images[i];
+
+			// Row Background (Win/Loss tint)
+			ctx.fillStyle = m.win ? 'rgba(46, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)';
+			ctx.fillRect(x, y, width - 40, rowHeight - 5);
+
+			// Sidebar color
+			ctx.fillStyle = m.win ? '#2ECC71' : '#E74C3C';
+			ctx.fillRect(x, y, 5, rowHeight - 5);
+
+			// Champion Image
+			if (img) {
+				ctx.drawImage(img, x + 15, y + 5, 55, 55);
+			}
+
+			// Champion Level Badge
+			ctx.fillStyle = '#1e2328';
+			ctx.beginPath();
+			ctx.arc(x + 60, y + 50, 10, 0, Math.PI * 2);
+			ctx.fill();
+			ctx.fillStyle = '#ffffff';
+			ctx.font = `bold 10px ${fontFamily}`;
+			ctx.textAlign = 'center';
+			ctx.fillText(m.champLevel || '?', x + 60, y + 54);
+
+			// KDA
+			ctx.textAlign = 'left';
+			ctx.fillStyle = '#ffffff';
+			ctx.font = `bold 18px ${fontFamily}`;
+			const kdaText = `${m.kills}/${m.deaths}/${m.assists}`;
+			ctx.fillText(kdaText, x + 90, y + 30);
+
+			// KDA Ratio
+			ctx.fillStyle = '#bdc3c7';
+			ctx.font = `12px ${fontFamily}`;
+			const kdaRatio = m.deaths === 0 ? 'Perfect' : ((m.kills + m.assists) / m.deaths).toFixed(2);
+			ctx.fillText(`${kdaRatio} KDA`, x + 90, y + 50);
+
+			// Mode & Date
+			ctx.textAlign = 'right';
+			ctx.fillStyle = '#ffffff';
+			ctx.font = `bold 14px ${fontFamily}`;
+			ctx.fillText(m.gameMode || 'RANKED', width - 40, y + 25);
+
+			ctx.fillStyle = '#95a5a6';
+			ctx.font = `12px ${fontFamily}`;
+			const date = new Date(m.gameEndTimestamp).toLocaleDateString('fr-FR');
+			const duration = `${Math.floor(m.gameDuration / 60)}m ${m.gameDuration % 60}s`;
+			ctx.fillText(`${date} • ${duration}`, width - 40, y + 45);
+
+			// Items (Miniatures) - Display first 3 items
+			if (m.items) {
+				// We assume items are preloaded or we skip them for speed. 
+				// For now simpler version without items or we need more preloading.
+				// Let's skip items for this version to keep it fast.
+			}
+		});
+
+		return canvas.toBuffer('image/png');
+	}
+	/**
+	 * Generate Ranks Image
+	 */
+	static async generateRanksImage(summonerName, ranks) {
+		const fontFamily = '"Noto Sans", "Noto Sans CJK SC", sans-serif';
+
+		const width = 600;
+		const height = 300;
+		const canvas = createCanvas(width, height);
+		const ctx = canvas.getContext('2d');
+
+		// Background
+		ctx.fillStyle = '#1e2328';
+		ctx.fillRect(0, 0, width, height);
+
+		// Header
+		ctx.fillStyle = '#f0e6d2';
+		ctx.font = `bold 24px ${fontFamily}`;
+		ctx.textAlign = 'center';
+		ctx.fillText(`RANKS - ${summonerName.toUpperCase()}`, width / 2, 40);
+
+		// We display up to 2 queues: SOLO/DUO and FLEX
+		const queues = ['RANKED_SOLO_5x5', 'RANKED_FLEX_SR'];
+		const labels = ['SOLO / DUO', 'FLEX 5v5'];
+
+		const cardWidth = 250;
+		const startX = (width - (queues.length * cardWidth) - 20) / 2;
+		const startY = 70;
+
+		// Load Tier Icons (Static assets usually, here we might simulate or load)
+		// For MVP, we'll draw colored badges if images missing
+		const TIER_COLORS = {
+			'IRON': '#575553',
+			'BRONZE': '#8c513a',
+			'SILVER': '#818b8d',
+			'GOLD': '#e3ac3e',
+			'PLATINUM': '#27ae60',
+			'EMERALD': '#2ecc71',
+			'DIAMOND': '#3498db',
+			'MASTER': '#9b59b6',
+			'GRANDMASTER': '#e74c3c',
+			'CHALLENGER': '#f1c40f'
+		};
+
+		queues.forEach((qType, i) => {
+			const x = startX + i * (cardWidth + 20);
+			const y = startY;
+			const rank = ranks.find(r => r.queueType === qType);
+
+			// Card Bg
+			ctx.fillStyle = '#111519';
+			ctx.fillRect(x, y, cardWidth, 200);
+
+			// Border
+			const tier = rank ? rank.tier : 'UNRANKED';
+			ctx.strokeStyle = TIER_COLORS[tier] || '#333';
+			ctx.lineWidth = 2;
+			ctx.strokeRect(x, y, cardWidth, 200);
+
+			// Label
+			ctx.fillStyle = '#9e9e9e';
+			ctx.font = `bold 16px ${fontFamily}`;
+			ctx.fillText(labels[i], x + cardWidth / 2, y + 30);
+
+			// Tier Text
+			ctx.fillStyle = TIER_COLORS[tier] || '#fff';
+			ctx.font = `bold 28px ${fontFamily}`;
+			if (rank) {
+				ctx.fillText(`${rank.tier} ${rank.rank}`, x + cardWidth / 2, y + 100);
+				ctx.fillStyle = '#fff';
+				ctx.font = `18px ${fontFamily}`;
+				ctx.fillText(`${rank.leaguePoints} LP`, x + cardWidth / 2, y + 130);
+
+				// Winrate
+				const wr = Math.round((rank.wins / (rank.wins + rank.losses)) * 100);
+				ctx.fillStyle = wr >= 50 ? '#2ecc71' : '#e74c3c';
+				ctx.font = `14px ${fontFamily}`;
+				ctx.fillText(`${rank.wins}W - ${rank.losses}L (${wr}%)`, x + cardWidth / 2, y + 160);
+			} else {
+				ctx.fillStyle = '#555';
+				ctx.fillText('UNRANKED', x + cardWidth / 2, y + 110);
+			}
+		});
+
+		return canvas.toBuffer('image/png');
+	}
 }
 
 module.exports = MatchImageGenerator;

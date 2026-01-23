@@ -195,6 +195,27 @@ class MatchTracker {
       this.database.updateLastMatchId(account.guild_id, account.puuid, latestMatchId);
 
       console.log(`Match notification sent for ${account.game_name}#${account.tag_line} (ELO: ${eloChange > 0 ? '+' : ''}${eloChange})`);
+
+      // === BET RESOLUTION ===
+      const pendingBets = this.database.getPendingBets(account.guild_id, account.puuid);
+      if (pendingBets && pendingBets.length > 0) {
+        for (const bet of pendingBets) {
+          const won = (bet.prediction === 'win' && playerStats.participant.win) ||
+            (bet.prediction === 'lose' && !playerStats.participant.win);
+
+          if (won) {
+            const profit = Math.floor(bet.amount * 1.8);
+            this.database.updatePlayerEloDirectly(bet.guild_id, bet.bettor_puuid, profit);
+            this.database.resolveBet(bet.id, 'won');
+
+            // Notify Bettor via notification channel (simple ping)
+            await channel.send({ content: `✅ <@${this.database.getAccount(bet.bettor_puuid)?.discord_user_id || 'User'}> a gagné son pari sur **${account.game_name}**! (+${profit} ELO)` });
+          } else {
+            this.database.resolveBet(bet.id, 'lost');
+            await channel.send({ content: `❌ <@${this.database.getAccount(bet.bettor_puuid)?.discord_user_id || 'User'}> a perdu son pari sur **${account.game_name}**... (-${bet.amount} ELO)` });
+          }
+        }
+      }
     } catch (error) {
       console.error(`Error processing match for ${account.game_name}#${account.tag_line}:`, error.message);
     }

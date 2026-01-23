@@ -56,6 +56,25 @@ class DatabaseManager {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (guild_id, puuid)
       );
+
+      CREATE TABLE IF NOT EXISTS player_bets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        bettor_puuid TEXT NOT NULL,
+        target_puuid TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        prediction TEXT NOT NULL,
+        status TEXT DEFAULT 'pending', 
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS loldle_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT NOT NULL,
+        discord_user_id TEXT NOT NULL,
+        date TEXT NOT NULL, 
+        solved INTEGER DEFAULT 0
+      );
     `);
 
     // Migration: Add summoner_id column if it doesn't exist
@@ -348,6 +367,64 @@ class DatabaseManager {
       WHERE guild_id = ? AND puuid = ?
     `);
     return stmt.run(newElo, peakElo, guildId, puuid);
+  }
+
+  // Betting System
+  createBet(guildId, bettorPuuid, targetPuuid, amount, prediction) {
+    const stmt = this.db.prepare(`
+      INSERT INTO player_bets (guild_id, bettor_puuid, target_puuid, amount, prediction)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    return stmt.run(guildId, bettorPuuid, targetPuuid, amount, prediction);
+  }
+
+  getPendingBets(guildId, targetPuuid) {
+    const stmt = this.db.prepare(`
+      SELECT * FROM player_bets 
+      WHERE guild_id = ? AND target_puuid = ? AND status = 'pending'
+    `);
+    return stmt.all(guildId, targetPuuid);
+  }
+
+  resolveBet(betId, status) {
+    const stmt = this.db.prepare(`
+      UPDATE player_bets
+      SET status = ?
+      WHERE id = ?
+    `);
+    return stmt.run(status, betId);
+  }
+
+  // LoLdle System
+  checkDailyAttempt(guildId, discordUserId) {
+    const today = new Date().toISOString().split('T')[0];
+    const stmt = this.db.prepare(`
+      SELECT * FROM loldle_attempts 
+      WHERE guild_id = ? AND discord_user_id = ? AND date = ?
+    `);
+    const attempt = stmt.get(guildId, discordUserId, today);
+
+    if (!attempt) {
+      // Create new daily record
+      const insert = this.db.prepare(`
+        INSERT INTO loldle_attempts (guild_id, discord_user_id, date) 
+        VALUES (?, ?, ?)
+      `);
+      insert.run(guildId, discordUserId, today);
+      return { solved: 0, firstTime: true };
+    }
+
+    return { solved: attempt.solved, firstTime: false };
+  }
+
+  markLoldleSolved(guildId, discordUserId) {
+    const today = new Date().toISOString().split('T')[0];
+    const stmt = this.db.prepare(`
+      UPDATE loldle_attempts
+      SET solved = 1
+      WHERE guild_id = ? AND discord_user_id = ? AND date = ?
+    `);
+    return stmt.run(guildId, discordUserId, today);
   }
 
   resetAllPlayerElo(guildId) {
