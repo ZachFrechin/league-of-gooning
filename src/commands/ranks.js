@@ -58,7 +58,7 @@ module.exports = {
 			const attachment = new AttachmentBuilder(imageBuffer, { name: 'ranks.png' });
 
 			const embed = new EmbedBuilder()
-				.setColor('#F1C40F')
+				.setColor('#2c3e50')
 				.setTitle(`🏅 Rangs: ${gameName}#${tagLine}`)
 				.setImage('attachment://ranks.png')
 				.setTimestamp()

@@ -538,10 +538,10 @@ class MatchImageGenerator {
 		const queues = ['RANKED_SOLO_5x5', 'RANKED_FLEX_SR'];
 		const labels = ['SOLO / DUO', 'FLEX 5v5'];
 
-		const cardWidth = 420;
-		const cardHeight = 420;
+		const cardWidth = 480;
+		const cardHeight = 520;
 		const startX = (width - (queues.length * cardWidth) - 40) / 2;
-		const startY = 100;
+		const startY = 80;
 
 		const TIER_COLORS = {
 			'IRON': '#A19D94', 'BRONZE': '#CD7F32', 'SILVER': '#C0C0C0',
@@ -559,16 +559,16 @@ class MatchImageGenerator {
 
 			// Card Bg
 			ctx.fillStyle = '#111519';
-			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 20, true);
+			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 25, true);
 
-			// Border
-			ctx.strokeStyle = TIER_COLORS[tier] || '#333';
-			ctx.lineWidth = 6;
-			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 20, false, true);
+			// Border (Subtle)
+			ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+			ctx.lineWidth = 1;
+			this.drawRoundedRect(ctx, x, y, cardWidth, cardHeight, 25, false, true);
 
 			// Label
 			ctx.fillStyle = '#9e9e9e';
-			ctx.font = `bold 24px ${fontFamily}`;
+			ctx.font = `bold 26px ${fontFamily}`;
 			ctx.textAlign = 'center';
 			ctx.fillText(labels[i], x + cardWidth / 2, y + 50);
 
@@ -578,11 +578,16 @@ class MatchImageGenerator {
 				? 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-unranked.png'
 				: `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-${tierName}.png`;
 
-			const maxEmblemSize = 280; // GIGANTIC
+			// BIGGER EMBLEM
+			const maxEmblemSize = 500;
 			try {
 				const emblem = await this.loadImageCached(emblemUrl);
 				if (emblem) {
-					// Maintain aspect ratio to avoid squashing
+					const angle = 0;
+					const centerX = x + cardWidth / 2;
+					const centerY = y + 230;
+
+					// Maintain aspect ratio
 					const ratio = emblem.width / emblem.height;
 					let drawW = maxEmblemSize;
 					let drawH = maxEmblemSize / ratio;
@@ -592,37 +597,34 @@ class MatchImageGenerator {
 						drawW = maxEmblemSize * ratio;
 					}
 
-					// Center emblem area (y+60 to y+300)
-					const centerX = x + cardWidth / 2;
-					const centerY = y + 180;
 					ctx.drawImage(emblem, centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
 				}
 			} catch (e) {
 				ctx.fillStyle = TIER_COLORS[tier];
 				ctx.beginPath();
-				ctx.arc(x + cardWidth / 2, y + 170, 70, 0, Math.PI * 2);
+				ctx.arc(x + cardWidth / 2, y + 200, 80, 0, Math.PI * 2);
 				ctx.fill();
 			}
 
 			// Tier Text
 			ctx.fillStyle = TIER_COLORS[tier] || '#fff';
-			ctx.font = `bold 38px ${fontFamily}`;
+			ctx.font = `bold 46px ${fontFamily}`;
 			if (rank) {
-				ctx.fillText(`${rank.tier} ${rank.rank}`, x + cardWidth / 2, y + 330);
+				ctx.fillText(`${rank.tier} ${rank.rank}`, x + cardWidth / 2, y + 400);
 				ctx.fillStyle = '#fff';
-				ctx.font = `24px ${fontFamily}`;
-				ctx.fillText(`${rank.leaguePoints} LP`, x + cardWidth / 2, y + 365);
+				ctx.font = `30px ${fontFamily}`;
+				ctx.fillText(`${rank.leaguePoints} LP`, x + cardWidth / 2, y + 440);
 
 				// Winrate
 				const total = rank.wins + rank.losses;
 				const wr = Math.round((rank.wins / total) * 100);
 				ctx.fillStyle = wr >= 50 ? '#2ecc71' : '#e74c3c';
-				ctx.font = `bold 20px ${fontFamily}`;
-				ctx.fillText(`${rank.wins}W - ${rank.losses}L (${wr}%)`, x + cardWidth / 2, y + 395);
+				ctx.font = `bold 24px ${fontFamily}`;
+				ctx.fillText(`${rank.wins}W - ${rank.losses}L (${wr}%)`, x + cardWidth / 2, y + 475);
 			} else {
 				ctx.fillStyle = '#555';
-				ctx.font = `bold 48px ${fontFamily}`;
-				ctx.fillText('UNRANKED', x + cardWidth / 2, y + 330);
+				ctx.font = `bold 52px ${fontFamily}`;
+				ctx.fillText('UNRANKED', x + cardWidth / 2, y + 400);
 			}
 		}
 
